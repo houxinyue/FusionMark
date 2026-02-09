@@ -1,0 +1,165 @@
+# Agent Instructions
+
+This project is a **PDF intelligent parsing and highlighting system** that combines MinerU, LangExtract, and PyMuPDF for structured document processing.
+
+## Project Overview
+
+**fusion-mark** implements a fusion pipeline that:
+1. Parses PDFs using MinerU API to extract text and layout information
+2. Extracts structured entities using LangExtract (LLM-based information extraction)
+3. Matches extracted text to precise locations in the PDF
+4. Renders colored highlights on the original PDF using PyMuPDF
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `mineru_client.py` | MinerU API client for document parsing (create task, poll status, download results) |
+| `mineru_langextract_fusion_demo.py` | **Main fusion pipeline** - end-to-end demo combining all components |
+| `pdf_highlight_demo.py` | PyMuPDF highlighting experiments and coordinate verification |
+| `langextract_demo.py` | Standalone LangExtract usage examples |
+| `docs/` | Design documents and progress tracking |
+
+## Architecture
+
+```
+PDF Input
+    │
+    ├──→ MinerU API ──→ layout.json (position data)
+    │                      └── build_span_index()
+    │
+    └──→ MinerU API ──→ full.md (text data)
+                           └── LangExtract
+                                   │
+                                   ▼
+                           Extracted Entities
+                                   │
+                                   ▼
+                           Text Matching Engine
+                           (Exact → Contains → Fuzzy)
+                                   │
+                                   ▼
+                           PyMuPDF Renderer
+                                   │
+                                   ▼
+                          Highlighted PDF Output
+```
+
+## Environment Variables
+
+Required in `.env` file:
+
+```bash
+# MinerU API
+MINERU_API_KEY=your_mineru_key
+
+# LangExtract (via DeepSeek)
+DS_API_KEY=your_deepseek_key
+DS_API_BASE_URL=https://api.deepseek.com/v1
+```
+
+## Usage Pattern
+
+### Quick Start - Run Fusion Demo
+```bash
+python mineru_langextract_fusion_demo.py
+```
+
+### Use MinerU Client Directly
+```python
+from mineru_client import MinerUClient
+
+client = MinerUClient()
+result = client.process_document(
+    url="https://example.com/doc.pdf",
+    model_version=MinerUClient.MODEL_VLM
+)
+print(result.content)  # Markdown content
+```
+
+## Output Structure
+
+```
+mineru_output/
+└── {task_id}/
+    ├── {task_id}.zip           # Downloaded result
+    ├── {task_id}_origin.pdf    # Original PDF
+    ├── layout.json             # Position data (spans, lines, blocks)
+    ├── full.md                 # Extracted markdown
+    └── ...                     # Other extracted files
+
+highlight_output/
+└── *_highlighted.pdf          # Final highlighted PDFs
+```
+
+## Highlight Colors
+
+| Category | Color | Usage |
+|----------|-------|-------|
+| `report_title` | 🟠 Orange | Document titles |
+| `company_name` | 🟢 Green | Organization names |
+| `shipment_value` | 🔵 Blue | Numeric values |
+| `market_share` | 🟣 Purple | Percentage values |
+| `yoy_change` | 🩷 Pink | Year-over-year changes |
+| `negative_change` | 🔴 Red | Negative growth values |
+| `data_source` | ⚪ Gray | Source citations |
+
+## Development Notes
+
+- **Coordinate System**: MinerU's bbox format `[x0, y0, x1, y1]` is compatible with PyMuPDF
+- **Text Matching**: Three-level strategy (exact → contains → fuzzy with 0.85 threshold)
+- **Granularity**: Span-level matching for maximum precision
+- **Y-axis Offset**: May need -3 unit adjustment for accurate positioning
+
+## Documentation
+
+- `docs/PDF_HIGHLIGHT_PLAN.md` - Initial research and planning
+- `docs/RESEARCH_PHASE_2_FUSION.md` - Phase 2 fusion architecture design
+- `docs/IMPLEMENTATION_FUSION_PIPELINE.md` - Implementation details
+- `docs/PROGRESS_LOG.md` - Development progress tracking
+
+## Testing
+
+Current test data: IDC Smartphone Shipment Report (Q4 2025)
+- Contains both positive (`+4.9%`) and negative (`-11.4%`) growth values
+- Validates multi-category extraction and color-coded highlighting
+
+
+# Agent Instructions & Project Protocol
+
+本项目使用 **bd** (beads) 进行任务追踪。
+
+## 快速参考 (Quick Reference)
+- 找活干: `bd ready`
+- 看详情: `bd show <id>`
+- 领任务: `bd update <id> --status in_progress`
+- 完工: `bd close <id> --reason "完成了xxx"`
+- **同步进度**: `bd sync` (仅同步 beads 数据库)
+
+## (Session Completion)
+**当你或用户结束一个工作会话时**，必须严格执行以下步骤。
+**目标：确保 beads 数据库与远程同步，但不擅自提交用户的业务代码。**
+
+**强制工作流 (MANDATORY WORKFLOW):**
+1. **清理尾巴**: 为所有未完成的工作创建新 Issue (`bd create ...`)。
+2. **更新状态**: 关闭已完成的任务 (`bd close`)，更新进行中的任务。
+3. **远程更新**: - Beads 专属通道
+当需要同步进度时，你必须严格执行以下逻辑，确保**只提交 beads 目录**，且**兼容文件修改**的情况：
+**步骤 1: 准备数据**
+执行 `bd sync` (这会更新本地的 SQLite 或 JSON 文件)。
+
+**步骤 2: 暂存变更 (关键解释)**
+执行 `git add .beads/`
+> *注意：这步是必须的。无论 .beads 里的文件是“新建的”还是“被修改的”，这行命令都会把它们放入暂存区。*
+
+**步骤 3: 检查并提交**
+执行以下组合命令（防止因没有变更导致报错）：
+`git diff --cached --quiet || git commit -m "chore(beads): sync task status [skip ci]"`
+
+> *逻辑解释：*
+> * `git diff --cached --quiet`: 检查暂存区有没有东西。
+> * `||`: 如果检测到有东西（即 quiet 返回 false），则执行后面的 commit。
+> * 这样即使 .beads 没有任何变化，命令也不会报错退出。
+
+**步骤 4: 推送**
+`git push`

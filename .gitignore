@@ -136,3 +136,15 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+
+# IDE 文件
+.idea/
+*.iml
+*.iws
+*.ipr
+.vs/
+.vscode/
+.env
+.kimi/
+**/mineru_output/
