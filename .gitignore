@@ -148,3 +148,4 @@ cython_debug/
 .env
 .kimi/
 **/mineru_output/
+**/highlight_output/
