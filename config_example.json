@@ -1,0 +1,42 @@
+{
+  "extraction_prompt": "从智能手机市场报告中提取以下信息：\n\n1. report_title: 报告标题\n2. company_name: 公司名称（如 Apple, Samsung, Xiaomi 等）\n3. shipment_value: 出货量数值（如 81.3）\n4. market_share: 市场份额（如 24.2%）\n5. yoy_change: 同比增长率（正值，如 4.9%）\n6. negative_change: 负增长/负值（带负号的数值，如 -11.4%）\n7. data_source: 数据来源\n\n提取规则：\n- 使用原文中的精确文本\n- 每个数值单独提取\n- 百分比保留 % 符号\n- 负值必须包含负号（-）\n- 负增长用 negative_change 类别，正值用 yoy_change 类别\n",
+  "examples": [
+    {
+      "text": "Top 5 Companies, Worldwide Smartphone Shipments\n1. Apple 81.3 24.2% 77.5 23.6% 4.9%\n2. Samsung 61.2 18.2% 51.7 15.7% 18.3%\n3. Xiaomi 37.8 11.2% 42.7 13.0% -11.4%\nSource: IDC Quarterly Mobile Phone Tracker",
+      "extractions": [
+        {"class": "report_title", "text": "Top 5 Companies, Worldwide Smartphone Shipments"},
+        {"class": "company_name", "text": "Apple"},
+        {"class": "shipment_value", "text": "81.3"},
+        {"class": "market_share", "text": "24.2%"},
+        {"class": "yoy_change", "text": "4.9%"},
+        {"class": "company_name", "text": "Samsung"},
+        {"class": "shipment_value", "text": "61.2"},
+        {"class": "yoy_change", "text": "18.3%"},
+        {"class": "company_name", "text": "Xiaomi"},
+        {"class": "shipment_value", "text": "37.8"},
+        {"class": "negative_change", "text": "-11.4%"},
+        {"class": "data_source", "text": "Source: IDC Quarterly Mobile Phone Tracker"}
+      ]
+    }
+  ],
+  "model_config": {
+    "model_id": "deepseek-chat",
+    "provider": "OpenAILanguageModel",
+    "api_key_env": "DS_API_KEY",
+    "base_url_env": "DS_API_BASE_URL",
+    "provider_kwargs": {}
+  },
+  "category_colors": [
+    {"name": "report_title", "color": "#e67e22", "description": "报告标题"},
+    {"name": "company_name", "color": "#2ecc71", "description": "公司名称"},
+    {"name": "shipment_value", "color": "#3498db", "description": "出货量数值"},
+    {"name": "market_share", "color": "#9b59b6", "description": "市场份额"},
+    {"name": "yoy_change", "color": "#e84393", "description": "同比增长率"},
+    {"name": "negative_change", "color": "#e74c3c", "description": "负增长/负值"},
+    {"name": "data_source", "color": "#95a5a6", "description": "数据来源"}
+  ],
+  "mineru_output_dir": "mineru_output",
+  "output_dir": "highlight_output",
+  "default_title": "文档分析报告",
+  "page_header": "文档自动分析报告"
+}
