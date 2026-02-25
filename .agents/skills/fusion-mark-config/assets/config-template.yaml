@@ -1,0 +1,55 @@
+# Fusion-Mark 配置模板
+# 修改以下配置以适应你的业务场景
+
+# === LangExtract 提取配置 ===
+
+extraction_prompt: |
+  从文档中提取以下信息：
+  
+  1. category_name_1: 类别1描述
+  2. category_name_2: 类别2描述
+  3. category_name_3: 类别3描述
+  
+  提取规则：
+  - 使用原文中的精确文本
+  - 每个实体单独提取
+  - 保留原始格式
+
+# 示例数据（用于 Few-shot Learning）
+examples:
+  - text: |
+      示例文本内容
+      包含需要提取的各种信息
+    extractions:
+      - class: category_name_1
+        text: "提取的文本1"
+      - class: category_name_2
+        text: "提取的文本2"
+
+# === 模型配置 ===
+model_config:
+  model_id: "deepseek-chat"
+  provider: "OpenAILanguageModel"
+  api_key_env: "DS_API_KEY"
+  base_url_env: "DS_API_BASE_URL"
+  provider_kwargs: {}
+
+# === 颜色配置 ===
+category_colors:
+  - name: category_name_1
+    color: "#e67e22"
+    description: "类别1描述"
+  - name: category_name_2
+    color: "#2ecc71"
+    description: "类别2描述"
+  - name: category_name_3
+    color: "#3498db"
+    description: "类别3描述"
+
+# === 路径配置 ===
+mineru_output_dir: "mineru_output"
+output_dir: "highlight_output"
+
+# === 渲染配置 ===
+default_title: "文档分析报告"
+page_header: "文档自动分析报告"

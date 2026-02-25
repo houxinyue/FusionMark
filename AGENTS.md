@@ -125,45 +125,6 @@ Current test data: IDC Smartphone Shipment Report (Q4 2025)
 - Validates multi-category extraction and color-coded highlighting
 
 
-# Agent Instructions & Project Protocol
-
-本项目使用 **bd** (beads) 进行任务追踪。
-
-## 快速参考 (Quick Reference)
-- 找活干: `bd ready`
-- 看详情: `bd show <id>`
-- 领任务: `bd update <id> --status in_progress`
-- 完工: `bd close <id> --reason "完成了xxx"`
-- **同步进度**: `bd sync` (仅同步 beads 数据库)
-
-## (Session Completion)
-**当你或用户结束一个工作会话时**，必须严格执行以下步骤。
-**目标：确保 beads 数据库与远程同步，但不擅自提交用户的业务代码。**
-
-**强制工作流 (MANDATORY WORKFLOW):**
-1. **清理尾巴**: 为所有未完成的工作创建新 Issue (`bd create ...`)。
-2. **更新状态**: 关闭已完成的任务 (`bd close`)，更新进行中的任务。
-3. **远程更新**: - Beads 专属通道
-当需要同步进度时，你必须严格执行以下逻辑，确保**只提交 beads 目录**，且**兼容文件修改**的情况：
-**步骤 1: 准备数据**
-执行 `bd sync` (这会更新本地的 SQLite 或 JSON 文件)。
-
-**步骤 2: 暂存变更 (关键解释)**
-执行 `git add .beads/`
-> *注意：这步是必须的。无论 .beads 里的文件是“新建的”还是“被修改的”，这行命令都会把它们放入暂存区。*
-
-**步骤 3: 检查并提交**
-执行以下组合命令（防止因没有变更导致报错）：
-`git diff --cached --quiet || git commit -m "chore(beads): sync task status [skip ci]"`
-
-> *逻辑解释：*
-> * `git diff --cached --quiet`: 检查暂存区有没有东西。
-> * `||`: 如果检测到有东西（即 quiet 返回 false），则执行后面的 commit。
-> * 这样即使 .beads 没有任何变化，命令也不会报错退出。
-
-**步骤 4: 推送**
-`git push`
-
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
 
@@ -250,3 +211,29 @@ bd automatically syncs with git:
 For more details, see README.md and docs/QUICKSTART.md.
 
 <!-- END BEADS INTEGRATION -->
+
+## Landing the Plane (Session Completion)
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds

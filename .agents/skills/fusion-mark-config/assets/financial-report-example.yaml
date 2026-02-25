@@ -1,0 +1,88 @@
+# 财务报告配置示例
+
+extraction_prompt: |
+  从财务报告中提取以下信息：
+  
+  1. report_period: 报告期间（如 2024年第四季度）
+  2. company_name: 公司名称
+  3. revenue: 营业收入（收入金额）
+  4. net_profit: 净利润
+  5. expense: 主要支出项
+  6. growth_rate: 增长率（正值）
+  7. decline_rate: 下降率（负值）
+  8. currency: 货币单位（如 人民币、美元）
+  9. auditor: 审计机构
+  
+  提取规则：
+  - 使用原文中的精确文本
+  - 金额包含货币单位
+  - 百分比保留 % 符号
+  - 区分增长（growth_rate）和下降（decline_rate）
+
+examples:
+  - text: |
+      腾讯控股 2024年第四季度财务报告
+      本季度营业收入 1,652 亿元人民币，同比增长 8%
+      净利润 478 亿元，较上年同期下降 2%
+      主要支出：研发费用 189 亿元
+      审计机构：普华永道中天会计师事务所
+    extractions:
+      - class: company_name
+        text: "腾讯控股"
+      - class: report_period
+        text: "2024年第四季度"
+      - class: revenue
+        text: "1,652 亿元人民币"
+      - class: growth_rate
+        text: "8%"
+      - class: net_profit
+        text: "478 亿元"
+      - class: decline_rate
+        text: "下降 2%"
+      - class: expense
+        text: "研发费用 189 亿元"
+      - class: currency
+        text: "人民币"
+      - class: auditor
+        text: "普华永道中天会计师事务所"
+
+model_config:
+  model_id: "deepseek-chat"
+  provider: "OpenAILanguageModel"
+  api_key_env: "DS_API_KEY"
+  base_url_env: "DS_API_BASE_URL"
+  provider_kwargs: {}
+
+category_colors:
+  - name: report_period
+    color: "#f1c40f"
+    description: "报告期间"
+  - name: company_name
+    color: "#6c5ce7"
+    description: "公司名称"
+  - name: revenue
+    color: "#2ecc71"
+    description: "营业收入"
+  - name: net_profit
+    color: "#3498db"
+    description: "净利润"
+  - name: expense
+    color: "#e74c3c"
+    description: "支出项"
+  - name: growth_rate
+    color: "#e84393"
+    description: "增长率"
+  - name: decline_rate
+    color: "#c0392b"
+    description: "下降率"
+  - name: currency
+    color: "#95a5a6"
+    description: "货币单位"
+  - name: auditor
+    color: "#00cec9"
+    description: "审计机构"
+
+mineru_output_dir: "mineru_output"
+output_dir: "highlight_output"
+default_title: "财务报告分析"
+page_header: "财务报表智能分析"
