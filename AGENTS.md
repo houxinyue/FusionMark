@@ -212,6 +212,78 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 <!-- END BEADS INTEGRATION -->
 
+## PowerShell Best Practices
+
+When executing commands in Windows PowerShell environment:
+
+### Avoid Multi-line Strings
+
+PowerShell handles multi-line strings differently than bash. **DO NOT** use multi-line strings with `&&` or `||` in PowerShell:
+
+```powershell
+# ❌ BAD - Will fail with parser errors
+cd D:\work\PyProject\fusion-mark && bd create "Title" --description="Line 1
+Line 2
+Line 3" -t task -p 1
+
+# ❌ BAD - Also problematic
+cd D:\work\PyProject\fusion-mark; bd create "Title" --description="Multi
+line text" -t task -p 1
+```
+
+### Recommended Approaches
+
+**Option 1: Use Single-line Commands**
+```powershell
+cd D:\work\PyProject\fusion-mark; bd create "Title" -t task -p 1
+```
+
+**Option 2: Create File First, Then Reference**
+```powershell
+# Create description file first
+$content = @"
+Line 1 content
+Line 2 content
+Line 3 content
+"@
+$content | Out-File -FilePath "temp_desc.txt" -Encoding UTF8
+
+# Then use the file (if tool supports file input)
+bd create "Title" -t task -p 1
+```
+
+**Option 3: Use Simple Commands Without Complex Descriptions**
+```powershell
+cd D:\work\PyProject\fusion-mark; bd create "Title" -t task -p 1 --json
+# Add description later via edit
+bd edit fusion-mark-xxx
+```
+
+### Shell Command Separators
+
+In PowerShell, use `;` as command separator (not `&&`):
+
+```powershell
+# ✅ CORRECT
+cd D:\work\PyProject\fusion-mark; git status
+
+# ❌ INCORRECT - && is not valid in PowerShell
+cd D:\work\PyProject\fusion-mark && git status
+```
+
+### File Path Handling
+
+Always use Windows-style paths or escaped backslashes:
+
+```powershell
+# ✅ CORRECT
+D:\work\PyProject\fusion-mark
+D:/work/PyProject/fusion-mark
+
+# ❌ INCORRECT
+/work/PyProject/fusion-mark  # Unix paths may not work
+```
+
 ## Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
