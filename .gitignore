@@ -151,7 +151,6 @@ cython_debug/
 .kimi/
 **/mineru_output/
 **/highlight_output/
-AGENTS.md
 AGENTS_SOUL.md
 
 # Dolt internals and local server configs
