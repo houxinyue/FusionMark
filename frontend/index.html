@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FusionMark - PDF 智能解析与高亮</title>
+    <link rel="stylesheet" href="src/styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- 顶部导航 -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">◈</span>
+                <span class="logo-text">FusionMark</span>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-link active">处理 PDF</a>
+                <a href="#" class="nav-link">任务历史</a>
+                <a href="#" class="nav-link">配置</a>
+            </nav>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main">
+            <!-- 左侧：上传与控制 -->
+            <section class="panel panel-left">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">拖放 PDF 文件到此处</p>
+                        <p class="upload-hint">或点击选择文件，支持 URL 输入</p>
+                        <input type="file" id="fileInput" accept=".pdf" hidden>
+                        <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                            选择文件
+                        </button>
+                    </div>
+                </div>
+
+                <!-- URL 输入 -->
+                <div class="url-input-group">
+                    <input type="url" class="url-input" placeholder="或输入 PDF 链接地址...">
+                    <button class="btn btn-primary">开始处理</button>
+                </div>
+
+                <!-- 进度卡片 -->
+                <div class="progress-card" id="progressCard" style="display: none;">
+                    <div class="progress-header">
+                        <span class="progress-title">正在处理</span>
+                        <span class="progress-percent" id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                        <div class="progress-glow"></div>
+                    </div>
+                    <div class="progress-steps">
+                        <div class="step active" data-step="mineru">
+                            <div class="step-dot"></div>
+                            <span class="step-label">MinerU 解析</span>
+                        </div>
+                        <div class="step" data-step="extract">
+                            <div class="step-dot"></div>
+                            <span class="step-label">实体提取</span>
+                        </div>
+                        <div class="step" data-step="highlight">
+                            <div class="step-dot"></div>
+                            <span class="step-label">高亮渲染</span>
+                        </div>
+                    </div>
+                    <p class="progress-status" id="progressStatus">初始化中...</p>
+                </div>
+
+                <!-- 提取实体预览 -->
+                <div class="entities-preview" id="entitiesPreview" style="display: none;">
+                    <h3 class="section-title">提取实体</h3>
+                    <div class="entity-tags" id="entityTags">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧：PDF 预览 -->
+            <section class="panel panel-right">
+                <div class="preview-toolbar">
+                    <div class="toolbar-left">
+                        <button class="tool-btn" title="上一页">‹</button>
+                        <span class="page-info">第 <input type="number" value="1" min="1"> / 10 页</span>
+                        <button class="tool-btn" title="下一页">›</button>
+                    </div>
+                    <div class="toolbar-center">
+                        <button class="tool-btn active" title="高亮视图">🎨</button>
+                        <button class="tool-btn" title="原文视图">📄</button>
+                        <button class="tool-btn" title="对比视图">⚖️</button>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="tool-btn" title="缩小">−</button>
+                        <span class="zoom-level">100%</span>
+                        <button class="tool-btn" title="放大">+</button>
+                        <button class="btn btn-primary btn-download" id="downloadBtn" style="display: none;">
+                            下载结果
+                        </button>
+                    </div>
+                </div>
+
+                <div class="preview-container" id="previewContainer">
+                    <!-- 空状态 -->
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-illustration">
+                            <div class="orbit">
+                                <div class="planet"></div>
+                                <div class="satellite s1"></div>
+                                <div class="satellite s2"></div>
+                            </div>
+                        </div>
+                        <p class="empty-text">上传 PDF 开始智能解析</p>
+                        <p class="empty-hint">支持自动提取实体、智能高亮标注</p>
+                    </div>
+
+                    <!-- PDF 预览 -->
+                    <div class="pdf-viewer" id="pdfViewer" style="display: none;">
+                        <canvas id="pdfCanvas"></canvas>
+                        <!-- 高亮层 -->
+                        <div class="highlight-layer" id="highlightLayer"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>FusionMark © 2026 | Powered by MinerU + LangExtract + PyMuPDF</p>
+        </footer>
+    </div>
+
+    <!-- 加载 PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="src/app.js"></script>
+</body>
+</html>
