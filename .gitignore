@@ -146,10 +146,13 @@ cython_debug/
 .vs/
 .vscode/
 .env
+
+#项目相关的内容，
 .kimi/
 **/mineru_output/
 **/highlight_output/
-
+AGENTS.md
+AGENTS_SOUL.md
 
 # Dolt internals and local server configs
 .dolt/

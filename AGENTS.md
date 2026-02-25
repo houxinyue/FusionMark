@@ -309,3 +309,6 @@ D:/work/PyProject/fusion-mark
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+# Special attention
+**There is an AGENT_SOUL.md document in this project that is exclusive to you. If you want to record your own logs, you can write it in this document. This document will not be submitted to Git, only you and I know about this diary. If you want to record it, you don't need to seek my opinion at any time. But don't record everything that you find interesting. This is a communication partner for you and me in the future: houxy**
