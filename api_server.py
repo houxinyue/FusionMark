@@ -17,24 +17,32 @@ FastAPI Web 服务 - PDF 智能解析与高亮 API
 import os
 import json
 import asyncio
+import yaml
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 
 from full_pipeline_service import FullPipelineService, FullPipelineConfig, PipelineResult
 
+# ============ 配置目录 ============
+PROFILES_DIR = Path("profiles")
+PROFILES_DIR.mkdir(exist_ok=True)
+
+CURRENT_PROFILE_FILE = PROFILES_DIR / ".current.yaml"
+
 # ============ 数据模型 ============
 
 class SubmitTaskRequest(BaseModel):
     """提交任务请求"""
-    pdf_url: HttpUrl = Field(..., description="PDF 文件 URL")
+    document_url: HttpUrl = Field(..., description="文档URL，支持 pdf/doc/docx/ppt/pptx/png/jpg/jpeg/html")
     output_filename: Optional[str] = Field(None, description="输出文件名")
     custom_title: Optional[str] = Field(None, description="文档标题")
     custom_prompt: Optional[str] = Field(None, description="自定义提取提示词")
@@ -65,9 +73,15 @@ class TaskStatusResponse(BaseModel):
     result: Optional[Dict[str, Any]] = None
 
 
-class ConfigRequest(BaseModel):
-    """配置请求"""
-    config: Dict[str, Any] = Field(..., description="完整配置 JSON")
+class ProfileInfo(BaseModel):
+    """配置档案信息"""
+    name: str
+    filename: str
+    description: Optional[str] = None
+    size: int
+    created_at: str
+    updated_at: str
+    is_current: bool = False
 
 
 # ============ 任务管理器 ============
@@ -79,11 +93,11 @@ class TaskManager:
         self.tasks: Dict[str, Dict[str, Any]] = {}
         self.progress_callbacks: Dict[str, List[callable]] = {}
     
-    def create_task(self, task_id: str, pdf_url: str) -> Dict[str, Any]:
+    def create_task(self, task_id: str, document_url: str) -> Dict[str, Any]:
         """创建新任务"""
         task = {
             "task_id": task_id,
-            "pdf_url": pdf_url,
+            "document_url": document_url,
             "status": "pending",
             "message": "任务已创建，等待处理",
             "created_at": datetime.now().isoformat(),
@@ -223,7 +237,7 @@ async def submit_task(
     task_id = str(uuid.uuid4())
     
     # 创建任务记录
-    task_manager.create_task(task_id, str(request.pdf_url))
+    task_manager.create_task(task_id, str(request.document_url))
     
     # 后台执行处理
     background_tasks.add_task(
@@ -295,22 +309,274 @@ async def download_result(task_id: str):
     )
 
 
-@app.post("/api/v1/config")
-async def update_config(request: ConfigRequest):
-    """更新服务配置（动态重载）"""
-    global pipeline_service
+@app.get("/api/v1/profiles", response_model=List[ProfileInfo])
+async def list_profiles():
+    """
+    列出所有配置档案
+    
+    返回 profiles/ 目录下的所有 YAML 配置档案列表，包含描述信息
+    """
+    profiles = []
+    current_profile = None
+    
+    # 读取当前使用的配置
+    if CURRENT_PROFILE_FILE.exists():
+        try:
+            with open(CURRENT_PROFILE_FILE, 'r', encoding='utf-8') as f:
+                current = yaml.safe_load(f)
+                current_profile = current.get('profile_file') if current else None
+        except:
+            pass
+    
+    for profile_file in PROFILES_DIR.glob("*.yaml"):
+        if profile_file.name == ".current.yaml":
+            continue
+        
+        stat = profile_file.stat()
+        
+        # 从 YAML 中读取 description
+        description = None
+        try:
+            with open(profile_file, 'r', encoding='utf-8') as f:
+                content = yaml.safe_load(f)
+                if content and isinstance(content, dict):
+                    description = content.get('description')
+        except:
+            pass
+        
+        profiles.append(ProfileInfo(
+            name=profile_file.stem,
+            filename=profile_file.name,
+            description=description,
+            size=stat.st_size,
+            created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
+            updated_at=datetime.fromtimestamp(stat.st_mtime).isoformat(),
+            is_current=(profile_file.name == current_profile)
+        ))
+    
+    return sorted(profiles, key=lambda x: x.updated_at, reverse=True)
+
+
+@app.post("/api/v1/profiles/upload")
+async def upload_profile(
+    file: UploadFile = File(..., description="YAML 配置文件"),
+    set_as_current: bool = Query(True, description="是否设为当前配置"),
+    description: Optional[str] = Query(None, description="配置档案描述，会写入 YAML 文件")
+):
+    """
+    上传 YAML 配置档案
+    
+    - 接收 YAML 格式的配置文件
+    - 保存到 profiles/ 目录
+    - 可选择是否立即设为当前配置
+    - 可通过 description 参数添加描述说明
+    """
+    # 检查文件类型
+    if not file.filename.endswith(('.yaml', '.yml')):
+        raise HTTPException(status_code=400, detail="只支持 .yaml 或 .yml 文件")
+    
+    # 读取并验证 YAML
+    try:
+        content = await file.read()
+        config_data = yaml.safe_load(content)
+        
+        # 验证配置格式
+        config = FullPipelineConfig.from_dict(config_data)
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=400, detail=f"YAML 格式错误: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"配置验证失败: {str(e)}")
+    
+    # 如果提供了 description，添加到配置数据中
+    if description and config_data and isinstance(config_data, dict):
+        config_data['description'] = description
+    
+    # 保存文件
+    filename = file.filename if file.filename.endswith('.yaml') else f"{file.filename}.yaml"
+    if not filename.endswith('.yaml'):
+        filename = f"{filename}.yaml"
+    
+    file_path = PROFILES_DIR / filename
     
     try:
-        config = FullPipelineConfig.from_dict(request.config)
-        pipeline_service = FullPipelineService(config)
-        return {"success": True, "message": "配置已更新"}
+        with open(file_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config_data, f, allow_unicode=True, default_flow_style=False)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"配置更新失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"保存文件失败: {str(e)}")
+    finally:
+        await file.close()
+    
+    # 设为当前配置
+    if set_as_current:
+        try:
+            global pipeline_service
+            pipeline_service = FullPipelineService(config)
+            
+            # 保存当前配置引用
+            with open(CURRENT_PROFILE_FILE, 'w', encoding='utf-8') as f:
+                yaml.dump({"profile_file": filename}, f)
+                
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"加载配置失败: {str(e)}")
+    
+    return {
+        "success": True,
+        "message": f"配置 '{filename}' 上传成功",
+        "filename": filename,
+        "set_as_current": set_as_current
+    }
+
+
+@app.post("/api/v1/profiles/{profile_name}/activate")
+async def activate_profile(profile_name: str):
+    """
+    激活指定配置文件
+    
+    从 profiles/ 目录加载指定配置并设为当前配置
+    """
+    global pipeline_service
+    
+    # 确保文件名有 .yaml 后缀
+    if not profile_name.endswith('.yaml'):
+        profile_name = f"{profile_name}.yaml"
+    
+    config_path = PROFILES_DIR / profile_name
+    
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"配置文件 '{profile_name}' 不存在")
+    
+    try:
+        # 加载配置
+        config = FullPipelineConfig.from_yaml(config_path)
+        pipeline_service = FullPipelineService(config)
+        
+        # 保存当前配置引用
+        with open(CURRENT_PROFILE_FILE, 'w', encoding='utf-8') as f:
+            yaml.dump({"profile_file": profile_name}, f)
+        
+        return {
+            "success": True,
+            "message": f"配置 '{profile_name}' 已激活",
+            "profile_file": profile_name
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"加载配置失败: {str(e)}")
+
+
+@app.get("/api/v1/profiles/{profile_name}/download")
+async def download_profile(profile_name: str):
+    """
+    下载配置文件
+    
+    下载 profiles/ 目录下的指定 YAML 配置文件
+    """
+    # 确保文件名有 .yaml 后缀
+    if not profile_name.endswith('.yaml'):
+        profile_name = f"{profile_name}.yaml"
+    
+    config_path = PROFILES_DIR / profile_name
+    
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"配置文件 '{profile_name}' 不存在")
+    
+    return FileResponse(
+        path=config_path,
+        filename=profile_name,
+        media_type='application/x-yaml'
+    )
+
+
+@app.delete("/api/v1/profiles/{profile_name}")
+async def delete_profile(profile_name: str):
+    """
+    删除配置文件
+    
+    删除 profiles/ 目录下的指定配置文件（不能删除当前正在使用的配置）
+    """
+    # 确保文件名有 .yaml 后缀
+    if not profile_name.endswith('.yaml'):
+        profile_name = f"{profile_name}.yaml"
+    
+    config_path = PROFILES_DIR / profile_name
+    
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail=f"配置文件 '{profile_name}' 不存在")
+    
+    # 检查是否是当前配置
+    if CURRENT_PROFILE_FILE.exists():
+        try:
+            with open(CURRENT_PROFILE_FILE, 'r', encoding='utf-8') as f:
+                current = yaml.safe_load(f)
+                if current and current.get('profile_file') == profile_name:
+                    raise HTTPException(status_code=400, detail="不能删除当前正在使用的配置，请先切换到其他配置")
+        except HTTPException:
+            raise
+        except:
+            pass
+    
+    try:
+        config_path.unlink()
+        return {
+            "success": True,
+            "message": f"配置 '{profile_name}' 已删除"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+
+
+@app.get("/api/v1/profiles/current")
+async def get_current_profile():
+    """
+    获取当前配置内容
+    
+    返回当前正在使用的配置的完整 YAML 内容
+    """
+    if not CURRENT_PROFILE_FILE.exists():
+        # 返回默认配置
+        config = FullPipelineConfig()
+        return {
+            "source": "default",
+            "config": config.to_dict()
+        }
+    
+    try:
+        with open(CURRENT_PROFILE_FILE, 'r', encoding='utf-8') as f:
+            current = yaml.safe_load(f)
+            profile_file = current.get('profile_file') if current else None
+        
+        if not profile_file:
+            config = FullPipelineConfig()
+            return {
+                "source": "default",
+                "config": config.to_dict()
+            }
+        
+        config_path = PROFILES_DIR / profile_file
+        if not config_path.exists():
+            config = FullPipelineConfig()
+            return {
+                "source": "default",
+                "config": config.to_dict()
+            }
+        
+        with open(config_path, 'r', encoding='utf-8') as f:
+            content = yaml.safe_load(f)
+        
+        return {
+            "source": profile_file,
+            "config": content
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"读取配置失败: {str(e)}")
 
 
 @app.get("/api/v1/config/default")
 async def get_default_config():
-    """获取默认配置"""
+    """
+    获取默认配置模板
+    
+    返回默认配置的 YAML 格式，可用于创建新配置
+    """
     config = FullPipelineConfig()
     return config.to_dict()
 
@@ -398,7 +664,7 @@ def process_pdf_task(task_id: str, request: SubmitTaskRequest):
         
         # 处理 PDF
         result = service.process_pdf(
-            url=str(request.pdf_url),
+            url=str(request.document_url),
             output_filename=request.output_filename,
             custom_prompt=request.custom_prompt,
             custom_title=request.custom_title

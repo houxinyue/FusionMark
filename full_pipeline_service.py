@@ -63,9 +63,12 @@ class FullPipelineConfig:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FullPipelineConfig":
         """从字典创建配置"""
-        if "highlight_config" in data:
-            data["highlight_config"] = MDHighlightConfig.from_dict(data["highlight_config"])
-        return cls(**data)
+        # 过滤掉非配置字段（如 description 是元数据）
+        config_data = {k: v for k, v in data.items() if k != "description"}
+        
+        if "highlight_config" in config_data:
+            config_data["highlight_config"] = MDHighlightConfig.from_dict(config_data["highlight_config"])
+        return cls(**config_data)
     
     @classmethod
     def from_json(cls, path: Union[str, Path]) -> "FullPipelineConfig":

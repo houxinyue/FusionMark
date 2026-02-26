@@ -1,0 +1,102 @@
+# 配置档案描述
+description: "Omdia智能手机出货报告专用配置 - 高亮负增长数值(红色)和中国厂商(蓝色)"
+
+# === MinerU 配置 ===
+
+mineru_model: "vlm"
+mineru_enable_ocr: true
+mineru_enable_formula: false
+mineru_enable_table: true
+mineru_language: "ch"
+mineru_poll_interval: 3
+mineru_max_retries: 60
+
+# === 高亮渲染配置 ===
+
+highlight_config:
+  # 提取提示词模板
+  extraction_prompt: |
+    从智能手机市场报告中提取以下信息：
+
+    1. report_title: 报告标题（如"全球智能手机出货量及年增长率"）
+    2. data_source: 数据来源（如"Omdia"）
+    3. company_name: 厂商名称
+       - 国际品牌：苹果、三星
+       - 中国厂商：小米、vivo、OPPO
+    4. shipment_value: 出货量数值（如 240.6）
+    5. market_share: 市场份额（如 19%）
+    6. yoy_positive: 正增长年增长率（如 7%、4%、2%）
+    7. yoy_negative: 负增长年增长率（如 -2%、-3%）
+
+    提取规则：
+    - 使用原文中的精确文本
+    - 每个数值单独提取
+    - 区分中国厂商和国际厂商
+    - 区分正负增长率
+
+  # 高亮类别与颜色配置
+  category_colors:
+    - name: report_title
+      color: "#FF8C00"
+      description: "报告标题"
+
+    - name: data_source
+      color: "#808080"
+      description: "数据来源"
+
+    - name: company_international
+      color: "#9370DB"
+      description: "国际厂商（苹果、三星）"
+
+    - name: company_chinese
+      color: "#0066CC"
+      description: "中国厂商（小米、vivo、OPPO）"
+
+    - name: shipment_value
+      color: "#1E90FF"
+      description: "出货量数值"
+
+    - name: market_share
+      color: "#32CD32"
+      description: "市场份额"
+
+    - name: yoy_positive
+      color: "#228B22"
+      description: "正增长年增长率"
+
+    - name: yoy_negative
+      color: "#DC143C"
+      description: "负增长年增长率"
+
+  # Few-shot 示例
+  examples:
+    - text: "小米出货量 165.4 百万部，市场份额 13%，年增长率 -2%"
+      extractions:
+        - class: "company_chinese"
+          text: "小米"
+        - class: "shipment_value"
+          text: "165.4"
+        - class: "market_share"
+          text: "13%"
+        - class: "yoy_negative"
+          text: "-2%"
+
+    - text: "苹果出货量 240.6 百万部，年增长率 7%"
+      extractions:
+        - class: "company_international"
+          text: "苹果"
+        - class: "shipment_value"
+          text: "240.6"
+        - class: "yoy_positive"
+          text: "7%"
+
+  # 模型配置
+  model_config:
+    model_id: "deepseek-chat"
+    provider_kwargs:
+      temperature: 0.1
+      max_tokens: 4000
+
+# === 输出配置 ===
+
+final_output_dir: "highlight_output"

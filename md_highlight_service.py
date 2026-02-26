@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import langextract as lx
 from langextract.data import Extraction, ExampleData
 from langextract.factory import ModelConfig
+from langextract.providers.openai import OpenAILanguageModel # 显式导入提供者
 from md_renderer import MDRenderer, HighlightEntity
 
 # 加载环境变量

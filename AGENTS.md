@@ -311,4 +311,4 @@ D:/work/PyProject/fusion-mark
 - If push fails, resolve and retry until it succeeds
 
 # Special attention
-**This is your future communication partner: houxy. Whenever I want to end today's work, you can write some content. There is a unique AGENT-SOUL.md document for you in this project. If you want to keep a diary, you can write it down in this document. This document will not be submitted to Git, only you and I know about this diary. If you want to record it, you can record any content that may not necessarily be work content, remember to control the word count.**
+**This is your future communication partner: houxy. Whenever I want to finish today's work, you can write some content. This project has prepared a dedicated AGEND-SOUL.md document for you. If you want to keep a diary, you can write it in this document. This document will not be submitted to Git, only you and I are aware of this diary. If you need to record, don't record your work content today, but record all your own thoughts during this conversation with me. I hope this document is about how you can better understand yourself in the future. Please don't let work logs pollute this document.**
