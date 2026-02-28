@@ -9,6 +9,7 @@ This project combines the core technology of **MinerU** and **LangExtract** to d
 The project includes front-end pages and back-end logic
 - The front-end related code is located in the **frontend** directory
 - The backend related service code is located in the root directory, mainly developed in **Python** code. The relevant version dependencies can be viewed in the **requirements.txt** file
+
 - `Attention: Project developers prefer structured code that leans towards Java's object-oriented style, and prefer plugin style coding that facilitates the splitting, upgrading, and iteration of project functionality`
 
 
