@@ -1,128 +1,15 @@
 # Agent Instructions
 
-This project is a **PDF intelligent parsing and highlighting system** that combines MinerU, LangExtract, and PyMuPDF for structured document processing.
+This project is a **highlighting system**.
+This project combines the core technology of **MinerU** and **LangExtract** to develop a configuration that highlights text display capabilities. MinerU is responsible for extracting multimodal text content, while **LangExtract** is responsible for highlighting structured data output from large model text. **MinerU** MD text is highlighted and converted to PDF display.
 
-## Project Overview
+`You can read the files in the docs directory` to see the specific implementation status of the project, or you can use the **bd (beads)** command to view the specific work progress.
 
-**fusion-mark** implements a fusion pipeline that:
-1. Parses PDFs using MinerU API to extract text and layout information
-2. Extracts structured entities using LangExtract (LLM-based information extraction)
-3. Matches extracted text to precise locations in the PDF
-4. Renders colored highlights on the original PDF using PyMuPDF
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `mineru_client.py` | MinerU API client for document parsing (create task, poll status, download results) |
-| `mineru_langextract_fusion_demo.py` | **Main fusion pipeline** - end-to-end demo combining all components |
-| `pdf_highlight_demo.py` | PyMuPDF highlighting experiments and coordinate verification |
-| `langextract_demo.py` | Standalone LangExtract usage examples |
-| `docs/` | Design documents and progress tracking |
-
-## Architecture
-
-```
-PDF Input
-    │
-    ├──→ MinerU API ──→ layout.json (position data)
-    │                      └── build_span_index()
-    │
-    └──→ MinerU API ──→ full.md (text data)
-                           └── LangExtract
-                                   │
-                                   ▼
-                           Extracted Entities
-                                   │
-                                   ▼
-                           Text Matching Engine
-                           (Exact → Contains → Fuzzy)
-                                   │
-                                   ▼
-                           PyMuPDF Renderer
-                                   │
-                                   ▼
-                          Highlighted PDF Output
-```
-
-## Environment Variables
-
-Required in `.env` file:
-
-```bash
-# MinerU API
-MINERU_API_KEY=your_mineru_key
-
-# LangExtract (via DeepSeek)
-DS_API_KEY=your_deepseek_key
-DS_API_BASE_URL=https://api.deepseek.com/v1
-```
-
-## Usage Pattern
-
-### Quick Start - Run Fusion Demo
-```bash
-python mineru_langextract_fusion_demo.py
-```
-
-### Use MinerU Client Directly
-```python
-from mineru_client import MinerUClient
-
-client = MinerUClient()
-result = client.process_document(
-    url="https://example.com/doc.pdf",
-    model_version=MinerUClient.MODEL_VLM
-)
-print(result.content)  # Markdown content
-```
-
-## Output Structure
-
-```
-mineru_output/
-└── {task_id}/
-    ├── {task_id}.zip           # Downloaded result
-    ├── {task_id}_origin.pdf    # Original PDF
-    ├── layout.json             # Position data (spans, lines, blocks)
-    ├── full.md                 # Extracted markdown
-    └── ...                     # Other extracted files
-
-highlight_output/
-└── *_highlighted.pdf          # Final highlighted PDFs
-```
-
-## Highlight Colors
-
-| Category | Color | Usage |
-|----------|-------|-------|
-| `report_title` | 🟠 Orange | Document titles |
-| `company_name` | 🟢 Green | Organization names |
-| `shipment_value` | 🔵 Blue | Numeric values |
-| `market_share` | 🟣 Purple | Percentage values |
-| `yoy_change` | 🩷 Pink | Year-over-year changes |
-| `negative_change` | 🔴 Red | Negative growth values |
-| `data_source` | ⚪ Gray | Source citations |
-
-## Development Notes
-
-- **Coordinate System**: MinerU's bbox format `[x0, y0, x1, y1]` is compatible with PyMuPDF
-- **Text Matching**: Three-level strategy (exact → contains → fuzzy with 0.85 threshold)
-- **Granularity**: Span-level matching for maximum precision
-- **Y-axis Offset**: May need -3 unit adjustment for accurate positioning
-
-## Documentation
-
-- `docs/PDF_HIGHLIGHT_PLAN.md` - Initial research and planning
-- `docs/RESEARCH_PHASE_2_FUSION.md` - Phase 2 fusion architecture design
-- `docs/IMPLEMENTATION_FUSION_PIPELINE.md` - Implementation details
-- `docs/PROGRESS_LOG.md` - Development progress tracking
-
-## Testing
-
-Current test data: IDC Smartphone Shipment Report (Q4 2025)
-- Contains both positive (`+4.9%`) and negative (`-11.4%`) growth values
-- Validates multi-category extraction and color-coded highlighting
+## Encoding grid
+The project includes front-end pages and back-end logic
+- The front-end related code is located in the **frontend** directory
+- The backend related service code is located in the root directory, mainly developed in **Python** code. The relevant version dependencies can be viewed in the **requirements.txt** file
+- `Attention: Project developers prefer structured code that leans towards Java's object-oriented style, and prefer plugin style coding that facilitates the splitting, upgrading, and iteration of project functionality`
 
 
 <!-- BEGIN BEADS INTEGRATION -->
