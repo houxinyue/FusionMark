@@ -4,6 +4,10 @@ PyMuPDF vs MinerU 方案对比测试
 比较两种文字坐标提取方案的差异
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import json
 import fitz
 from pathlib import Path

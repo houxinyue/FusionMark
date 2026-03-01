@@ -3,6 +3,10 @@ MD 高亮渲染服务使用示例
 展示如何使用可配置的服务
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from md_highlight_service import (
     MDHighlightService, 
     MDHighlightConfig,

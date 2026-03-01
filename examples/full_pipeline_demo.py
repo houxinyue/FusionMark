@@ -3,6 +3,10 @@
 展示如何使用 FullPipelineService 实现 PDF → 高亮 PDF 的完整流程
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from full_pipeline_service import (
     FullPipelineService,
     FullPipelineConfig,

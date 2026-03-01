@@ -5,6 +5,8 @@ This project combines the core technology of **MinerU** and **LangExtract** to d
 
 `You can read the files in the docs directory` to see the specific implementation status of the project, or you can use the **bd (beads)** command to view the specific work progress.
 
+> 📖 **Project Overview**: If you need to understand the overall architecture, core processes, dependency instructions, and other summary information of the project, please first read the **README.md** file.
+
 ## Encoding grid
 The project includes front-end pages and back-end logic
 - The front-end related code is located in the **frontend** directory

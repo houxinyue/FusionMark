@@ -11,6 +11,10 @@ PyMuPDF + LangExtract 融合 Pipeline
 5. PyMuPDF 渲染高亮
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import fitz
 import langextract as lx
 from langextract.factory import ModelConfig
