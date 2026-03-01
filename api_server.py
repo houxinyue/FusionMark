@@ -20,7 +20,7 @@ import asyncio
 import yaml
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 from contextlib import asynccontextmanager
 from dataclasses import asdict
@@ -37,6 +37,35 @@ PROFILES_DIR = Path("profiles")
 PROFILES_DIR.mkdir(exist_ok=True)
 
 CURRENT_PROFILE_FILE = PROFILES_DIR / ".current.yaml"
+
+
+def get_current_profile_config() -> Tuple[Optional[FullPipelineConfig], Optional[str]]:
+    """
+    获取当前激活的配置文件
+    返回: (配置对象, 配置文件名)
+    如果没有激活的配置，返回 (None, None)
+    """
+    if not CURRENT_PROFILE_FILE.exists():
+        return None, None
+    
+    try:
+        with open(CURRENT_PROFILE_FILE, 'r', encoding='utf-8') as f:
+            current = yaml.safe_load(f)
+            profile_file = current.get('profile_file') if current else None
+        
+        if not profile_file:
+            return None, None
+        
+        config_path = PROFILES_DIR / profile_file
+        if not config_path.exists():
+            return None, None
+        
+        config = FullPipelineConfig.from_yaml(config_path)
+        return config, profile_file
+    except Exception as e:
+        print(f"[!] 加载当前配置失败: {e}")
+        return None, None
+
 
 # ============ 数据模型 ============
 
@@ -168,7 +197,13 @@ def get_service() -> FullPipelineService:
     """获取或创建服务实例"""
     global pipeline_service
     if pipeline_service is None:
-        config = FullPipelineConfig()
+        # 尝试加载当前激活的配置
+        config, profile_name = get_current_profile_config()
+        if config is None:
+            print("[*] 使用默认配置")
+            config = FullPipelineConfig()
+        else:
+            print(f"[*] 使用配置文件: {profile_name}")
         pipeline_service = FullPipelineService(config)
     return pipeline_service
 
@@ -454,6 +489,8 @@ async def activate_profile(profile_name: str):
         with open(CURRENT_PROFILE_FILE, 'w', encoding='utf-8') as f:
             yaml.dump({"profile_file": profile_name}, f)
         
+        print(f"[+] 配置文件已激活: {profile_name}")
+        
         return {
             "success": True,
             "message": f"配置 '{profile_name}' 已激活",
@@ -641,8 +678,15 @@ def process_pdf_task(task_id: str, request: SubmitTaskRequest):
     task_manager.update_task(task_id, status="processing", message="MinerU 解析中...")
     
     try:
-        # 创建带进度回调的服务配置
-        config = FullPipelineConfig()
+        # 加载当前激活的配置（如果有）
+        config, profile_name = get_current_profile_config()
+        if config is None:
+            print("[*] 使用默认配置")
+            config = FullPipelineConfig()
+        else:
+            print(f"[*] 使用配置文件: {profile_name}")
+        
+        # 应用请求参数覆盖
         config.mineru_model = request.model
         config.mineru_enable_ocr = request.enable_ocr
         config.mineru_enable_formula = request.enable_formula
@@ -671,9 +715,10 @@ def process_pdf_task(task_id: str, request: SubmitTaskRequest):
         )
         
         if result.success:
-            # 构建结果
+            # 构建结果 - 使用 API 层的 task_id 保持一致
             result_data = {
-                "task_id": result.task_id,
+                "task_id": task_id,
+                "mineru_task_id": result.task_id,
                 "output_path": str(result.output_path) if result.output_path else None,
                 "md_length": len(result.md_content) if result.md_content else 0,
                 "extraction_count": result.highlight_result.extraction_count if result.highlight_result else 0,

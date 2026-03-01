@@ -16,23 +16,60 @@ mineru_max_retries: 60
 highlight_config:
   # 提取提示词模板
   extraction_prompt: |
-    从智能手机市场报告中提取以下信息：
+    从智能手机市场报告的HTML表格中提取以下信息。
+
+    输入格式说明：
+    - 数据以HTML <table> 表格形式呈现
+    - 表格列顺序：厂商 | 报告年出货量(百万部) | 报告年市场份额 | 对比年出货量(百万部) | 对比年市场份额 | 年增长率
+    - 每一行 <tr> 包含一个厂商的完整数据
+
+    需要提取的信息：
 
     1. report_title: 报告标题（如"全球智能手机出货量及年增长率"）
+       - 通常在文档开头的一级标题中
+
     2. data_source: 数据来源（如"Omdia"）
-    3. company_name: 厂商名称
-       - 国际品牌：苹果、三星
-       - 中国厂商：小米、vivo、OPPO
-    4. shipment_value: 出货量数值（如 240.6）
-    5. market_share: 市场份额（如 19%）
-    6. yoy_positive: 正增长年增长率（如 7%、4%、2%）
-    7. yoy_negative: 负增长年增长率（如 -2%、-3%）
+       - 通常在来源说明行，格式为"来源：xxx"
+
+    3. company_international: 国际厂商名称
+       - 仅包括：苹果、三星
+       - 必须是表格第一列的厂商名称
+       - 不要提取"其他"、"合计"等非厂商行
+
+    4. company_chinese: 中国厂商名称
+       - 包括：小米、vivo、OPPO
+       - 必须是表格第一列的厂商名称
+       - 注意：表格中可能有大小写，如"vivo"保持原样
+
+    5. shipment_value_report: 报告年出货量数值
+       - 从报告年出货量列提取（表格第2列，通常是较新年份）
+       - 格式如：240.6、165.4、1,245.5
+       - 保留原始格式（包括逗号分隔符）
+
+    6. market_share_report: 报告年市场份额
+       - 从报告年市场份额列提取（表格第3列，通常是较新年份）
+       - 格式如：19%、13%、100%
+       - 必须包含 % 符号
+
+    7. yoy_positive: 正增长年增长率
+       - 从年增长率列提取（表格第6列）
+       - 值为正数且不带负号，如：7%、4%、2%
+       - 必须包含 % 符号
+       - 不包括"合计"行的增长率
+
+    8. yoy_negative: 负增长年增长率
+       - 从年增长率列提取（表格第6列）
+       - 值必须带负号，如：-2%、-3%
+       - 必须包含 % 符号和负号
 
     提取规则：
-    - 使用原文中的精确文本
-    - 每个数值单独提取
-    - 区分中国厂商和国际厂商
-    - 区分正负增长率
+    - 严格按照HTML表格的行列对应关系提取
+    - 每个数值单独提取，不要合并
+    - 厂商名称只从表格第一列提取
+    - 区分中国厂商和国际厂商（参考上述分类）
+    - 正负增长率必须根据数值是否带负号严格区分
+    - 不要提取"其他"、"合计"等汇总行的数据
+    - 使用原文中的精确文本，包括大小写
 
   # 高亮类别与颜色配置
   category_colors:
@@ -52,13 +89,13 @@ highlight_config:
       color: "#0066CC"
       description: "中国厂商（小米、vivo、OPPO）"
 
-    - name: shipment_value
+    - name: shipment_value_report
       color: "#1E90FF"
-      description: "出货量数值"
+      description: "报告年出货量数值"
 
-    - name: market_share
+    - name: market_share_report
       color: "#32CD32"
-      description: "市场份额"
+      description: "报告年市场份额"
 
     - name: yoy_positive
       color: "#228B22"
@@ -68,27 +105,73 @@ highlight_config:
       color: "#DC143C"
       description: "负增长年增长率"
 
-  # Few-shot 示例
+  # Few-shot 示例 - 使用HTML表格格式
   examples:
-    - text: "小米出货量 165.4 百万部，市场份额 13%，年增长率 -2%"
+    - text: |
+        <table>
+        <tr><td>厂商</td><td>2023年出货量(百万部)</td><td>2023年市场份额</td><td>年增长率</td></tr>
+        <tr><td>苹果</td><td>240.6</td><td>19%</td><td>7%</td></tr>
+        <tr><td>三星</td><td>239.1</td><td>19%</td><td>7%</td></tr>
+        <tr><td>小米</td><td>165.4</td><td>13%</td><td>-2%</td></tr>
+        </table>
+        来源：Omdia
       extractions:
-        - class: "company_chinese"
-          text: "小米"
-        - class: "shipment_value"
-          text: "165.4"
-        - class: "market_share"
-          text: "13%"
-        - class: "yoy_negative"
-          text: "-2%"
-
-    - text: "苹果出货量 240.6 百万部，年增长率 7%"
-      extractions:
+        # 国际厂商
         - class: "company_international"
           text: "苹果"
-        - class: "shipment_value"
+        - class: "company_international"
+          text: "三星"
+        # 中国厂商
+        - class: "company_chinese"
+          text: "小米"
+        # 报告年出货量
+        - class: "shipment_value_report"
           text: "240.6"
+        - class: "shipment_value_report"
+          text: "239.1"
+        - class: "shipment_value_report"
+          text: "165.4"
+        # 报告年市场份额
+        - class: "market_share_report"
+          text: "19%"
+        - class: "market_share_report"
+          text: "13%"
+        # 正增长率
         - class: "yoy_positive"
           text: "7%"
+        # 负增长率
+        - class: "yoy_negative"
+          text: "-2%"
+        # 数据来源
+        - class: "data_source"
+          text: "Omdia"
+
+    - text: |
+        <table>
+        <tr><td>厂商</td><td>2024年出货量(百万部)</td><td>2024年市场份额</td><td>年增长率</td></tr>
+        <tr><td>vivo</td><td>105.3</td><td>8%</td><td>4%</td></tr>
+        <tr><td>OPPO</td><td>100.7</td><td>8%</td><td>-3%</td></tr>
+        </table>
+      extractions:
+        # 中国厂商
+        - class: "company_chinese"
+          text: "vivo"
+        - class: "company_chinese"
+          text: "OPPO"
+        # 报告年出货量
+        - class: "shipment_value_report"
+          text: "105.3"
+        - class: "shipment_value_report"
+          text: "100.7"
+        # 报告年市场份额
+        - class: "market_share_report"
+          text: "8%"
+        # 正增长率
+        - class: "yoy_positive"
+          text: "4%"
+        # 负增长率
+        - class: "yoy_negative"
+          text: "-3%"
 
   # 模型配置
   model_config:

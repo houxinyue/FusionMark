@@ -440,16 +440,20 @@ python start_server.py worker
 python start_server.py flower
 ```
 
-### 运行测试
+### 运行示例
 
 ```bash
 # 完整流程演示
+cd examples
 python full_pipeline_demo.py
 
 # MinerU + LangExtract 融合演示
 python mineru_langextract_fusion_demo.py
 
-# API 测试
+# 回到项目根目录
+cd ..
+
+# API 测试（如有测试目录）
 python -m pytest tests/ -v
 ```
 
