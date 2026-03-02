@@ -17,7 +17,6 @@
 E:\
 ├── dolt\                  # Dolt 可执行文件（绿色版）
 │   ├── dolt.exe
-│   ├── git-dolt.exe
 ├── data\                  # 所有数据库数据（推荐）
 │   ├── myproject\         # 数据库A（内含 .dolt/）
 │   └── another_db\        # 数据库B
@@ -55,7 +54,7 @@ Expand-Archive -Path "dolt.zip" -DestinationPath "." -Force
 Remove-Item "dolt.zip"
 ```
 
-**验证**：确保 `E:\dolt\dolt.exe` 和 `git-dolt.exe` 存在。若解压后文件在子文件夹（如 `bin\`），手动移动出来即可。
+**验证**：确保 `E:\dolt\dolt.exe`  存在。若解压后文件在子文件夹（如 `bin\`），手动移动出来即可。
 
 ## 步骤 3：创建一键启动脚本
 
