@@ -101,23 +101,71 @@ cmd /k
 ```batch
 @echo off
 chcp 65001 >nul
-title Dolt SQL Server (Portable)
+title Dolt SQL Server (Portable - 单库模式)
 
 set "DOLT_DRIVE=%~d0"
-set "PATH=%DOLT_DRIVE%\dolt;%PATH%"
-set "HOME=%DOLT_DRIVE%\config"
+set "PATH=%DOLT_DRIVE%\dolt\bin;%PATH%"
+set "HOME=%DOLT_DRIVE%\dolt\config"
 
-cd /d %DOLT_DRIVE%\data
+:: 进入 data 目录
+cd /d "%DOLT_DRIVE%\dolt\data" 2>nul
+if errorlevel 1 (
+    echo 错误：无法进入 %DOLT_DRIVE%\dolt\data 目录
+    pause
+    exit /b 1
+)
 
-echo ==========================================
-echo    Dolt SQL Server 便携版
-echo    监听: 0.0.0.0:3306
-echo    数据目录: %CD%
-echo ==========================================
+echo =============================================
+echo      Dolt SQL Server 便携版（单数据库模式）
+echo =============================================
+echo.
+echo 当前可用数据库（文件夹列表）：
+echo --------------------------------
+dir /b /ad 2>nul
+if errorlevel 1 (
+    echo （暂无数据库文件夹）
+)
+echo.
+echo --------------------------------
+set /p DBNAME=请输入要启动的数据库名称（例如：myproject）：
+
+if "%DBNAME%"=="" (
+    echo 未输入数据库名称，已退出。
+    pause
+    exit /b
+)
+
+:: 检查数据库是否存在
+if not exist "%DBNAME%" (
+    echo 错误：数据库 "%DBNAME%" 不存在！
+    pause
+    exit /b 1
+)
+
+if not exist "%DBNAME%\.dolt" (
+    echo 错误："%DBNAME%" 不是有效的 Dolt 数据库（缺少 .dolt 文件夹）
+    pause
+    exit /b 1
+)
+
+:: 切换到指定数据库目录
+cd /d "%DBNAME%"
+
+echo.
+echo =============================================
+echo      正在启动单个数据库：
+echo      数据库名称：%DBNAME%
+echo      监听地址：0.0.0.0:3307
+echo      数据路径：%CD%
+echo =============================================
+echo.
+echo 服务器启动中...（按 Ctrl+C 停止）
 echo.
 
-echo 正在启动服务器...（按 Ctrl+C 停止）
-dolt sql-server --host 0.0.0.0 --port 3306 --data-dir "%CD%" --loglevel info
+dolt sql-server --host 0.0.0.0 --port 3307 --loglevel info
+
+echo.
+echo 服务器已停止。
 pause
 ```
 
