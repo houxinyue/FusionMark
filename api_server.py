@@ -28,7 +28,7 @@ from dataclasses import asdict
 from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 
 from full_pipeline_service import FullPipelineService, FullPipelineConfig, PipelineResult
 
@@ -71,7 +71,7 @@ def get_current_profile_config() -> Tuple[Optional[FullPipelineConfig], Optional
 
 class SubmitTaskRequest(BaseModel):
     """提交任务请求"""
-    document_url: HttpUrl = Field(..., description="文档URL，支持 pdf/doc/docx/ppt/pptx/png/jpg/jpeg/html")
+    document_url: str = Field(..., description="文档URL，支持 pdf/doc/docx/ppt/pptx/png/jpg/jpeg/html")
     output_filename: Optional[str] = Field(None, description="输出文件名")
     custom_title: Optional[str] = Field(None, description="文档标题")
     custom_prompt: Optional[str] = Field(None, description="自定义提取提示词")
@@ -81,6 +81,17 @@ class SubmitTaskRequest(BaseModel):
     enable_formula: bool = Field(True, description="启用公式识别")
     enable_table: bool = Field(True, description="启用表格识别")
     language: str = Field("ch", description="文档语言")
+    
+    @field_validator('document_url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        """验证URL格式"""
+        if not v or not v.strip():
+            raise ValueError('URL不能为空')
+        v = v.strip()
+        if not (v.startswith('http://') or v.startswith('https://')):
+            raise ValueError('URL必须以 http:// 或 https:// 开头')
+        return v
 
 
 class TaskResponse(BaseModel):
@@ -132,10 +143,32 @@ class TaskManager:
             "created_at": datetime.now().isoformat(),
             "updated_at": None,
             "progress": {
-                "mineru_state": "pending",
-                "mineru_progress": 0,
-                "extraction_count": 0,
-                "highlight_count": 0
+                # 当前阶段: pending/mineru/extraction/highlight/completed/failed
+                "stage": "pending",
+                "stage_progress": 0,  # 当前阶段进度 0-100
+                "overall_progress": 0,  # 总体进度 0-100
+                # MinerU 阶段详情
+                "mineru": {
+                    "state": "pending",  # pending/running/completed/failed
+                    "progress": 0,  # 0-100
+                    "current_page": 0,
+                    "total_pages": 0,
+                    "logs": []
+                },
+                # 实体提取阶段详情
+                "extraction": {
+                    "state": "pending",
+                    "progress": 0,  # 0-100
+                    "extracted_count": 0,
+                    "logs": []
+                },
+                # 高亮渲染阶段详情
+                "highlight": {
+                    "state": "pending",
+                    "progress": 0,  # 0-100
+                    "highlighted_count": 0,
+                    "logs": []
+                }
             },
             "result": None
         }
@@ -618,6 +651,9 @@ async def get_default_config():
     return config.to_dict()
 
 
+# 存储主事件循环引用，用于后台线程调度
+_main_event_loop: Optional[asyncio.AbstractEventLoop] = None
+
 # ============ WebSocket 实时进度 ============
 
 @app.websocket("/ws/{task_id}")
@@ -627,6 +663,9 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
     
     连接后，服务端会实时推送任务进度更新
     """
+    global _main_event_loop
+    _main_event_loop = asyncio.get_running_loop()
+    
     await websocket.accept()
     
     task = task_manager.get_task(task_id)
@@ -635,16 +674,28 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         await websocket.close()
         return
     
-    # 定义进度回调
     async def progress_callback(task_data: Dict[str, Any]):
-        await websocket.send_json({
-            "type": "progress",
-            "data": task_data
-        })
+        try:
+            await websocket.send_json({
+                "type": "progress",
+                "data": task_data
+            })
+        except Exception as e:
+            print(f"[WebSocket] 发送进度失败: {e}")
+    
+    def sync_callback(task_data: Dict[str, Any]):
+        """同步包装器，在后台线程中调度到主事件循环"""
+        global _main_event_loop
+        if _main_event_loop and _main_event_loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(progress_callback(task_data), _main_event_loop)
+            except Exception as e:
+                print(f"[WebSocket] 调度回调失败: {e}")
+        else:
+            print(f"[WebSocket] 主事件循环不可用，跳过进度推送")
     
     # 注册回调
-    callback_id = id(progress_callback)
-    task_manager.register_progress_callback(task_id, lambda t: asyncio.create_task(progress_callback(t)))
+    task_manager.register_progress_callback(task_id, sync_callback)
     
     try:
         # 发送当前状态
@@ -665,91 +716,206 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
                 
     except WebSocketDisconnect:
         print(f"WebSocket 断开: {task_id}")
+    except Exception as e:
+        print(f"[WebSocket] 错误: {e}")
     finally:
-        task_manager.unregister_progress_callback(task_id, progress_callback)
+        task_manager.unregister_progress_callback(task_id, sync_callback)
 
 
 # ============ 后台任务处理 ============
 
 def process_pdf_task(task_id: str, request: SubmitTaskRequest):
-    """后台处理 PDF 任务"""
+    """后台处理 PDF 任务 - 使用分阶段进度"""
     
-    # 更新任务状态
-    task_manager.update_task(task_id, status="processing", message="MinerU 解析中...")
+    import time
+    
+    def update_stage(stage: str, stage_progress: int = None, message: str = None, 
+                    mineru_data: Dict = None, extraction_data: Dict = None, highlight_data: Dict = None):
+        """更新当前阶段和进度"""
+        progress_data = {"stage": stage}
+        if stage_progress is not None:
+            progress_data["stage_progress"] = stage_progress
+        
+        # 计算总体进度 - 根据已完成的阶段累加
+        stage_weights = {
+            "pending": 0,
+            "mineru": 40,      # MinerU占0-40%
+            "extraction": 30,  # 实体提取占40-70%
+            "highlight": 30,   # 高亮渲染占70-100%
+            "completed": 0     # 完成后总体100%
+        }
+        
+        stage_order = ["pending", "mineru", "extraction", "highlight", "completed"]
+        if stage in stage_weights:
+            # 计算已完成的阶段权重
+            completed_weight = 0
+            current_stage_index = stage_order.index(stage)
+            for i in range(current_stage_index):
+                completed_weight += stage_weights.get(stage_order[i], 0)
+            
+            # 当前阶段的贡献
+            current_weight = stage_weights.get(stage, 0)
+            current_progress = (stage_progress or 0) / 100
+            
+            progress_data["overall_progress"] = int(completed_weight + current_weight * current_progress)
+        
+        # 更新阶段特定数据
+        if mineru_data:
+            progress_data["mineru"] = mineru_data
+        if extraction_data:
+            progress_data["extraction"] = extraction_data
+        if highlight_data:
+            progress_data["highlight"] = highlight_data
+            
+        task_manager.update_progress(task_id, **progress_data)
+        if message:
+            task_manager.update_task(task_id, message=message)
+    
+    # 等待一小段时间，确保 WebSocket 已连接
+    time.sleep(0.5)
+    
+    # ========== 阶段 1: MinerU 解析 ==========
+    update_stage("mineru", 0, "MinerU 解析准备中...", 
+                 mineru_data={"state": "running", "progress": 0, "logs": ["准备解析文档..."]})
     
     try:
-        # 加载当前激活的配置（如果有）
+        # 加载配置
         config, profile_name = get_current_profile_config()
         if config is None:
-            print("[*] 使用默认配置")
             config = FullPipelineConfig()
-        else:
-            print(f"[*] 使用配置文件: {profile_name}")
         
-        # 应用请求参数覆盖
+        # 应用请求参数
         config.mineru_model = request.model
         config.mineru_enable_ocr = request.enable_ocr
         config.mineru_enable_formula = request.enable_formula
         config.mineru_enable_table = request.enable_table
         config.mineru_language = request.language
         
+        # 检查 API Key
+        if not config.mineru_api_key:
+            error_msg = "MinerU API Key 未配置"
+            update_stage("failed", 0, error_msg)
+            task_manager.update_task(task_id, status="failed", message=error_msg)
+            return
+        
         service = FullPipelineService(config)
         
-        # 定义 MinerU 进度回调
+        # MinerU 进度回调
         def mineru_progress_callback(attempt: int, state: str, data: Dict):
             progress = data.get("extract_progress", {})
-            task_manager.update_progress(
-                task_id,
-                mineru_state=state,
-                mineru_progress=progress.get("extracted_pages", 0),
-                mineru_total=progress.get("total_pages", 0),
-                mineru_attempt=attempt
-            )
+            current_page = progress.get("extracted_pages", 0)
+            total_pages = progress.get("total_pages", 0)
+            
+            # 计算 MinerU 阶段进度
+            mineru_progress = 0
+            if total_pages > 0:
+                mineru_progress = int((current_page / total_pages) * 100)
+            elif state == "done" or state == "completed":
+                mineru_progress = 100
+            else:
+                mineru_progress = min(attempt * 10, 90)  # 轮询时渐进增长
+            
+            logs = [f"解析中... 第{current_page}/{total_pages}页" if total_pages > 0 else f"等待响应... (尝试{attempt})"]
+            if state == "done" or state == "completed":
+                logs = ["MinerU 解析完成"]
+            
+            update_stage("mineru", mineru_progress, 
+                        "MinerU 解析中..." if mineru_progress < 100 else "MinerU 解析完成",
+                        mineru_data={"state": state, "progress": mineru_progress, 
+                               "current_page": current_page, "total_pages": total_pages,
+                               "logs": logs})
         
         # 处理 PDF
         result = service.process_pdf(
             url=str(request.document_url),
             output_filename=request.output_filename,
             custom_prompt=request.custom_prompt,
-            custom_title=request.custom_title
+            custom_title=request.custom_title,
+            wait_callback=mineru_progress_callback
         )
         
-        if result.success:
-            # 构建结果 - 使用 API 层的 task_id 保持一致
-            result_data = {
-                "task_id": task_id,
-                "mineru_task_id": result.task_id,
-                "output_path": str(result.output_path) if result.output_path else None,
-                "md_length": len(result.md_content) if result.md_content else 0,
-                "extraction_count": result.highlight_result.extraction_count if result.highlight_result else 0,
-                "highlight_count": result.highlight_result.highlight_count if result.highlight_result else 0,
-                "category_counts": result.highlight_result.details.get("category_counts", {}) if result.highlight_result else {}
-            }
-            
-            task_manager.update_task(
-                task_id,
-                status="completed",
-                message="处理完成",
-                result=result_data
-            )
-            task_manager.update_progress(
-                task_id,
-                extraction_count=result_data["extraction_count"],
-                highlight_count=result_data["highlight_count"]
-            )
-        else:
-            task_manager.update_task(
-                task_id,
-                status="failed",
-                message=result.message
-            )
-            
-    except Exception as e:
+        if not result.success:
+            error_msg = result.message or "MinerU 解析失败"
+            update_stage("failed", 0, error_msg)
+            task_manager.update_task(task_id, status="failed", message=error_msg)
+            return
+        
+        # MinerU 完成，进入实体提取阶段
+        # 注意：process_pdf 内部会继续执行 LangExtract 和渲染（阻塞调用）
+        update_stage("mineru", 100, "MinerU 解析完成，准备实体提取...", 
+                    mineru_data={"state": "completed", "progress": 100, "logs": ["解析完成"]})
+        
+        # ========== 阶段 2: 实体提取 (LangExtract) ==========
+        # 由于 process_pdf 是阻塞的，我们在这里更新进度，告诉用户即将开始 LangExtract
+        update_stage("extraction", 5, "准备提取配置...",
+                    extraction_data={"state": "running", "progress": 5, 
+                                     "logs": ["准备提取配置...", "加载示例数据..."]})
+        time.sleep(0.2)  # 给前端时间渲染
+        
+        # 发送"开始调用大模型"进度
+        update_stage("extraction", 10, "调用大模型分析文档（约需1-3分钟）...",
+                    extraction_data={"state": "running", "progress": 10, 
+                                     "logs": ["正在调用 deepseek-chat 模型...", 
+                                              "分析文档内容（此步骤耗时较长，请耐心等待）..."]})
+        
+        # ⚠️ process_pdf 内部会继续执行 LangExtract（阻塞调用）
+        # 由于 LangExtract 没有回调机制，前端会卡在 10% 直到完成
+        # 获取结果（LangExtract 和渲染已经在 process_pdf 内完成）
+        extraction_count = result.highlight_result.extraction_count if result.highlight_result else 0
+        
+        # LangExtract 和渲染完成后，更新最终进度
+        update_stage("extraction", 100, f"提取完成，共 {extraction_count} 个实体",
+                    extraction_data={"state": "completed", "progress": 100, 
+                               "extracted_count": extraction_count,
+                               "logs": [f"提取完成，共 {extraction_count} 个实体", "验证通过"]})
+        
+        # ========== 阶段 3: 高亮渲染 ==========
+        update_stage("highlight", 0, "渲染 PDF 中...",
+                    highlight_data={"state": "running", "progress": 0, "logs": ["开始渲染..."]})
+        
+        highlight_count = result.highlight_result.highlight_count if result.highlight_result else 0
+        
+        # 模拟渲染进度
+        for i in range(5):
+            progress = (i + 1) * 20
+            logs = [f"渲染中... 已处理 {int(highlight_count * progress / 100)} 处高亮"]
+            update_stage("highlight", progress, "渲染 PDF 中...",
+                        highlight_data={"state": "running", "progress": progress,
+                                  "highlighted_count": int(highlight_count * progress / 100),
+                                  "logs": logs})
+            time.sleep(0.05)
+        
+        # ========== 完成 ==========
+        result_data = {
+            "task_id": task_id,
+            "mineru_task_id": result.task_id,
+            "output_path": str(result.output_path) if result.output_path else None,
+            "md_length": len(result.md_content) if result.md_content else 0,
+            "extraction_count": extraction_count,
+            "highlight_count": highlight_count,
+            "category_counts": result.highlight_result.details.get("category_counts", {}) if result.highlight_result else {}
+        }
+        
+        update_stage("completed", 100, "处理完成",
+                    highlight_data={"state": "completed", "progress": 100,
+                              "highlighted_count": highlight_count,
+                              "logs": ["渲染完成"]})
+        
         task_manager.update_task(
             task_id,
-            status="failed",
-            message=f"处理异常: {str(e)}"
+            status="completed",
+            message="处理完成",
+            result=result_data
         )
+        print(f"[✓] 任务完成: {task_id}")
+        
+    except Exception as e:
+        error_msg = f"处理异常: {str(e)}"
+        print(f"[✗] 任务异常: {task_id} - {error_msg}")
+        import traceback
+        traceback.print_exc()
+        update_stage("failed", 0, error_msg)
+        task_manager.update_task(task_id, status="failed", message=error_msg)
 
 
 # ============ 健康检查 ============

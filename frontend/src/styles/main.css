@@ -458,6 +458,16 @@ body {
     border-color: var(--klein-blue);
 }
 
+.step.failed .step-dot {
+    background: var(--morandi-rose);
+    border-color: #e74c3c;
+    box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+.step.failed .step-label {
+    color: var(--morandi-rose);
+}
+
 .step-label {
     font-size: 11px;
     color: var(--text-muted);
