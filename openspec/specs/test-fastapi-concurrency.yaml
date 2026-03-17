@@ -1,0 +1,15 @@
+id: fusion-mark-7fk
+title: 测试: FastAPI 并发任务处理性能测试
+status: open
+priority: 2
+type: task
+owner: houxinyue18@outlook.com
+created_at: 2026-02-25T08:08:19Z
+
+---
+
+## 测试范围
+
+- 并发任务提交
+- 性能基准测试
+- 资源占用监控

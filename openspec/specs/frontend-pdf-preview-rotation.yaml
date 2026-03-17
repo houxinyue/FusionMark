@@ -1,0 +1,17 @@
+id: fusion-mark-b6y
+title: 前端: PDF预览显示翻转问题
+status: open
+priority: 1
+type: bug
+owner: houxinyue18@outlook.com
+created_at: 2026-03-03T14:23:16Z
+
+---
+
+## 问题描述
+
+PDF预览时页面显示方向不正确，需要调整PDF.js的渲染配置或检查原始PDF的方向信息。
+
+## 关联文档
+
+- docs/celery_full_pipeline_design.md - 可与全异步工作流实施并行开发
