@@ -296,9 +296,8 @@ def step2_langextract(
         )
         
         # 尝试导入 LangExtract
-try:
+        try:
             from langextract import extract
-            
             # 获取配置
             prompt = config.get('custom_prompt') if config else None
             examples = config.get('examples') if config else None

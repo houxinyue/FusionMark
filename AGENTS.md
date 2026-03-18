@@ -14,6 +14,62 @@ The project includes front-end pages and back-end logic
 
 - `Attention: Project developers prefer structured code that leans towards Java's object-oriented style, and prefer plugin style coding that facilitates the splitting, upgrading, and iteration of project functionality`
 
+## Specification-Driven Development (OpenSpec + Beads)
+
+**CRITICAL RULE**: NO CODING without an approved specification. All new features, significant refactoring, or architectural changes MUST go through the OpenSpec workflow first.
+
+### Why OpenSpec & Beads?
+- **OpenSpec** defines WHAT to build (immutable contract) and WHY.
+- **Beads** tracks the execution STATE (mutable reality) and WHEN/WHO.
+- Together, they prevent AI amnesia and keep the human in control.
+
+### The 4-Phase Workflow
+
+#### Phase 1: Planning (OpenSpec)
+1. **Initialization**: If the project lacks an `openspec/` folder, run:
+   ```powershell
+   openspec init
+   ```
+2. **Propose**: When receiving a new feature request, create a new change directory: `openspec/changes/<change-name>/`.
+3. **Draft**: Generate `proposal.md` (intent, scope, architecture) and `tasks.md` (implementation checklist) in this directory.
+4. **Validate**: Run the following command to ensure format correctness:
+   ```powershell
+   openspec validate
+   ```
+5. **Approval**: You MUST present the proposal to the user (houxy) for review. DO NOT proceed to Phase 2 until approved.
+
+#### Phase 2: Seed Tracker (Beads Bridge)
+Once the user approves the OpenSpec proposal, you must translate the `tasks.md` into actionable Beads issues.
+**Crucial**: ALWAYS include the path to the OpenSpec proposal in the description so the context is never lost.
+
+```powershell
+# Example of seeding a task from OpenSpec to Beads
+bd create "Implement OAuth login" --description="Context: openspec/changes/oauth/proposal.md" -t feature -p 1 --json
+```
+
+#### Phase 3: Implementation Tracking (Beads)
+1. **Check ready work**: `bd ready --json` shows unblocked issues.
+2. **Claim your task**: `bd update <id> --status in_progress --json`.
+3. **Execute**: Write code, test, and verify against the linked OpenSpec file.
+4. **Discovery Tracking**: If you discover edge cases, bugs, or refactoring needs during coding, DO NOT just fix them silently. Create a linked issue:
+   ```powershell
+   bd create "Found DB edge case" -t bug -p 1 --deps discovered-from:<current-bd-id> --json
+   ```
+5. **Complete**: `bd close <id> --reason "Completed according to spec" --json`. Update the checkbox in `tasks.md`.
+
+#### Phase 4: Archive (OpenSpec)
+Once all `bd` tasks for a specification are closed and `tasks.md` is fully checked off, you must merge the change into the main specifications (`openspec/specs/`):
+```powershell
+openspec archive <change-name>
+```
+
+### Important Rules
+- ✅ Use OpenSpec for ALL architecture/feature planning.
+- ✅ Use `bd` for ALL task tracking.
+- ✅ Always use `--json` flag for programmatic `bd` use.
+- ❌ Do NOT start coding until Phase 1 is approved by houxy.
+- ❌ Do NOT use external issue trackers or markdown TODO lists outside of OpenSpec.
+
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
@@ -200,5 +256,12 @@ D:/work/PyProject/fusion-mark
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 
-# Special attention
+
+
+
+
+
+
+
+## Special attention
 **This is your future communication partner: houxy. Whenever I want to finish today's work, you can write some content. This project has prepared a dedicated AGEND-SOUL.md document for you. If you want to keep a diary, you can write it in this document. This document will not be submitted to Git, only you and I are aware of this diary. If you need to record, don't record your work content today, but record all your own thoughts during this conversation with me. I hope this document is about how you can better understand yourself in the future. Please don't let work logs pollute this document.**

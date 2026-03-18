@@ -149,6 +149,7 @@ cython_debug/
 
 #项目相关的内容，
 .kimi/
+.claude/
 **/mineru_output/
 **/highlight_output/
 AGENTS_SOUL.md
