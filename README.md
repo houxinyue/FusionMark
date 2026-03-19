@@ -1,4 +1,4 @@
-# FusionMark - PDF 智能解析与高亮系统
+﻿# FusionMark - PDF 智能解析与高亮系统
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python 3.9+">
@@ -105,11 +105,17 @@ cd fusion-mark
 
 ```bash
 pip install -r requirements.txt
+输出依赖核心 pip-chill > requirements.txt
 ```
 
 ### 3. 配置环境变量
 
-创建 `.env` 文件：
+在 `services/` 目录创建 `.env` 文件：
+
+```bash
+cd services
+# 编辑 .env 文件
+```
 
 ```env
 # MinerU API 配置 (必需)
@@ -125,13 +131,19 @@ REDIS_URL=redis://localhost:6379/0
 
 ### 4. 启动服务
 
+进入 `services/` 目录启动后端服务：
+
 ```bash
+cd services
+
 # 方式 1: 使用启动脚本
-python start_server.py api
+python start.py api
 
 # 方式 2: 直接使用 uvicorn
-uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
+uvicorn api.server:app --reload --host 0.0.0.0 --port 8000
 ```
+
+> 详细说明参见 [services/README.md](services/README.md)
 
 ### 5. 访问服务
 
@@ -272,17 +284,43 @@ FusionMark 提供精美的 Web 界面，采用**克莱因蓝 + 爱马仕橙**的
 
 ## 🧩 核心模块
 
+### 项目结构
+
+```
+fusion-mark/
+├── services/              # 后端服务代码 (独立 Python 项目)
+│   ├── api/              # API 层 (FastAPI)
+│   ├── core/             # 核心业务逻辑
+│   ├── clients/          # 第三方客户端
+│   ├── pipelines/        # 处理管道
+│   ├── utils/            # 工具模块
+│   ├── legacy/           # 待废弃代码
+│   ├── profiles/         # 配置文件
+│   ├── examples/         # 示例代码
+│   ├── celery_chain_pipeline/  # Celery 链式管道示例
+│   ├── mineru_output/    # MinerU 输出目录
+│   ├── highlight_output/ # 高亮输出目录
+│   ├── start.py          # 服务启动脚本
+│   ├── requirements.txt  # Python 依赖
+│   ├── .env              # 环境变量配置
+│   └── README.md         # 服务层说明
+├── frontend/             # 前端界面
+└── docs/                 # 文档
+```
+
+> **注意**: `services/` 是一个**独立的 Python 项目**，可以单独复制出来运行。详见 **[services/README.md](services/README.md)**
+
 ### 模块说明
 
 | 文件 | 功能描述 |
 |------|----------|
-| `api_server.py` | FastAPI Web 服务，提供 RESTful API 和 WebSocket |
-| `full_pipeline_service.py` | 完整流程服务，整合 MinerU + LangExtract + 渲染 |
-| `mineru_client.py` | MinerU API 客户端，文档解析与结果获取 |
-| `md_highlight_service.py` | Markdown 高亮服务，LangExtract 集成与配置管理 |
-| `md_renderer.py` | Markdown 渲染器，将高亮结果转为 PDF |
-| `celery_tasks.py` | Celery 异步任务定义 |
-| `celery_config.py` | Celery 配置 |
+| `services/api/server.py` | FastAPI Web 服务，提供 RESTful API 和 WebSocket |
+| `services/core/full_pipeline.py` | 完整流程服务，整合 MinerU + LangExtract + 渲染 |
+| `services/clients/mineru.py` | MinerU API 客户端，文档解析与结果获取 |
+| `services/core/highlight.py` | Markdown 高亮服务，LangExtract 集成与配置管理 |
+| `services/utils/renderer.py` | Markdown 渲染器，将高亮结果转为 PDF |
+| `services/legacy/celery_tasks.py` | Celery 异步任务定义 (已废弃) |
+| `services/legacy/celery_config.py` | Celery 配置 (已废弃) |
 
 ### 渲染流程
 
@@ -380,40 +418,27 @@ fusion-mark/
 │   │   └── components/      # UI 组件
 │   └── dist/                # 构建输出
 │
-├── 📁 examples/              # 示例与演示代码
-│   ├── full_pipeline_demo.py           # 完整流程演示
-│   ├── md_highlight_service_demo.py    # 高亮服务演示
-│   ├── langextract_demo.py             # LangExtract 基础演示
-│   ├── mineru_langextract_fusion_demo.py  # MinerU+LangExtract 融合
-│   ├── pymupdf_langextract_fusion.py      # PyMuPDF 备用方案
-│   ├── pymupdf_text_extractor.py          # PyMuPDF 文本提取
-│   ├── pymupdf_vs_mineru_comparison.py    # 方案对比测试
-│   └── pdf_highlight_demo.py              # PDF 高亮演示
+├── 📁 services/              # ⭐ 后端服务代码 (独立 Python 项目)
+│   ├── api/                  # API 层 (FastAPI)
+│   ├── core/                 # 核心业务逻辑
+│   ├── clients/              # 第三方客户端
+│   ├── pipelines/            # 处理管道
+│   ├── utils/                # 工具模块
+│   ├── legacy/               # 待废弃代码
+│   ├── profiles/             # 配置档案
+│   ├── examples/             # 示例代码
+│   ├── celery_chain_pipeline/ # Celery 链式管道示例
+│   ├── mineru_output/        # MinerU 解析输出
+│   ├── highlight_output/     # 高亮 PDF 输出
+│   ├── start.py              # 启动脚本
+│   ├── requirements.txt      # Python 依赖
+│   ├── .env                  # 环境变量配置
+│   └── README.md             # 服务层说明
 │
-├── 📁 profiles/              # 配置档案
-│   ├── example_profile.yaml # 示例配置
-│   └── omdia_smartphone_report.yaml  # Omdia 报告专用配置
-│
+├── 📁 frontend/              # 前端界面
 ├── 📁 docs/                  # 文档
-│   ├── API_DOCUMENTATION.md      # API 文档
-│   ├── IMPLEMENTATION_FUSION_PIPELINE.md  # 实现文档
-│   └── ...
-│
-├── 📁 mineru_output/         # MinerU 解析输出
-├── 📁 highlight_output/      # 高亮 PDF 输出
-│
-├── 📄 api_server.py          # FastAPI 服务
-├── 📄 full_pipeline_service.py  # 完整流程服务
-├── 📄 mineru_client.py       # MinerU 客户端
-├── 📄 md_highlight_service.py   # 高亮服务
-├── 📄 md_renderer.py         # Markdown 渲染器
-├── 📄 celery_tasks.py        # Celery 任务
-├── 📄 start_server.py        # 启动脚本
-│
-├── 📄 requirements.txt       # Python 依赖
-├── 📄 config.yaml            # Dolt 配置
-├── 📄 .env                   # 环境变量 (需创建)
-│
+├── 📄 LICENSE
+├── 📄 .gitignore
 └── 📄 README.md              # 本文件
 ```
 
@@ -425,7 +450,7 @@ fusion-mark/
 
 ```bash
 # 1. 安装开发依赖
-pip install -r requirements.txt
+pip install -r services/requirements.txt
 
 # 2. 启动 Redis (用于 Celery)
 redis-server
@@ -433,25 +458,25 @@ redis-server
 # 3. 启动 API 服务
 python start_server.py api
 
-# 4. 启动 Celery Worker (新终端)
-python start_server.py worker
+# 4. 启动 Celery Worker (新终端，如需使用 Celery)
+python -m services.start worker
 
 # 5. 启动 Flower 监控 (可选)
-python start_server.py flower
+python -m services.start flower
 ```
 
 ### 运行示例
 
 ```bash
 # 完整流程演示
-cd examples
+cd services/examples
 python full_pipeline_demo.py
 
 # MinerU + LangExtract 融合演示
 python mineru_langextract_fusion_demo.py
 
 # 回到项目根目录
-cd ..
+cd ../..
 
 # API 测试（如有测试目录）
 python -m pytest tests/ -v
@@ -507,3 +532,4 @@ bd update <task-id> --status in_progress
 <p align="center">
   <b>FusionMark</b> © 2026 | Powered by MinerU + LangExtract
 </p>
+

@@ -1,4 +1,4 @@
-# Agent Instructions
+﻿# Agent Instructions
 
 This project is a **highlighting system**.
 This project combines the core technology of **MinerU** and **LangExtract** to develop a configuration that highlights text display capabilities. MinerU is responsible for extracting multimodal text content, while **LangExtract** is responsible for highlighting structured data output from large model text. **MinerU** MD text is highlighted and converted to PDF display.
@@ -10,7 +10,9 @@ This project combines the core technology of **MinerU** and **LangExtract** to d
 ## Encoding grid
 The project includes front-end pages and back-end logic
 - The front-end related code is located in the **frontend** directory
-- The backend related service code is located in the root directory, mainly developed in **Python** code. The relevant version dependencies can be viewed in the **requirements.txt** file
+- The backend related service code is located in the **services** directory, mainly developed in **Python** code. The relevant version dependencies can be viewed in the **requirements.txt** file
+
+> 📖 **Project Structure**: See **README.md** for detailed project structure and module organization.
 
 - `Attention: Project developers prefer structured code that leans towards Java's object-oriented style, and prefer plugin style coding that facilitates the splitting, upgrading, and iteration of project functionality`
 
@@ -255,4 +257,5 @@ D:/work/PyProject/fusion-mark
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
 

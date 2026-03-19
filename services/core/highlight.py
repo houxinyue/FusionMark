@@ -1,4 +1,4 @@
-"""
+﻿"""
 MD 高亮渲染服务
 可配置的 Pipeline 服务，支持 LangExtract 参数和高亮颜色的灵活配置
 
@@ -22,10 +22,14 @@ import langextract as lx
 from langextract.data import Extraction, ExampleData
 from langextract.factory import ModelConfig
 from langextract.providers.openai import OpenAILanguageModel # 显式导入提供者
-from md_renderer import MDRenderer, HighlightEntity
+from services.utils.renderer import MDRenderer, HighlightEntity
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量 (从 services/ 目录)
+_ENV_PATH = Path(__file__).parent.parent / ".env"
+if _ENV_PATH.exists():
+    load_dotenv(_ENV_PATH)
+else:
+    load_dotenv()
 
 
 @dataclass
@@ -594,3 +598,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

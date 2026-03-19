@@ -1,4 +1,4 @@
-"""
+﻿"""
 FastAPI Web 服务 - PDF 智能解析与高亮 API
 
 提供 RESTful API 接口，支持:
@@ -8,7 +8,7 @@ FastAPI Web 服务 - PDF 智能解析与高亮 API
 - 实时进度推送 (WebSocket)
 
 启动方式:
-    uvicorn api_server:app --reload --host 0.0.0.0 --port 8000
+    uvicorn services.api.server:app --reload --host 0.0.0.0 --port 8000
 
 依赖安装:
     pip install fastapi uvicorn websockets celery redis
@@ -30,10 +30,17 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from full_pipeline_service import FullPipelineService, FullPipelineConfig, PipelineResult
+try:
+    # 从项目根目录运行时
+    from services.core.full_pipeline import FullPipelineService, FullPipelineConfig, PipelineResult
+except ModuleNotFoundError:
+    # 从 services 目录内运行时，使用相对导入
+    from ..core.full_pipeline import FullPipelineService, FullPipelineConfig, PipelineResult
 
 # ============ 配置目录 ============
-PROFILES_DIR = Path("profiles")
+# 计算 services 目录 (services/api/server.py -> services/)
+SERVICES_DIR = Path(__file__).parent.parent
+PROFILES_DIR = SERVICES_DIR / "profiles"
 PROFILES_DIR.mkdir(exist_ok=True)
 
 CURRENT_PROFILE_FILE = PROFILES_DIR / ".current.yaml"
@@ -948,3 +955,4 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+

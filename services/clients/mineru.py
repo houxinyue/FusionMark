@@ -26,8 +26,12 @@ from typing import Optional, Dict, List
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量 (从 services/ 目录)
+_ENV_PATH = Path(__file__).parent.parent / ".env"
+if _ENV_PATH.exists():
+    load_dotenv(_ENV_PATH)
+else:
+    load_dotenv()
 
 
 @dataclass

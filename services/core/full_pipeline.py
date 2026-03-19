@@ -1,4 +1,4 @@
-"""
+﻿"""
 完整流程服务 - PDF 智能解析与高亮
 整合: MinerU API + LangExtract + MDRenderer
 
@@ -21,8 +21,8 @@ from dataclasses import dataclass, field, asdict
 from dotenv import load_dotenv
 
 # 导入已有模块
-from mineru_client import MinerUClient, MinerUConfig, ParseResult
-from md_highlight_service import (
+from services.clients.mineru import MinerUClient, MinerUConfig, ParseResult
+from services.core.highlight import (
     MDHighlightService, 
     MDHighlightConfig,
     LangExtractExample,
@@ -31,8 +31,12 @@ from md_highlight_service import (
     ServiceResult
 )
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量 (从 services/ 目录)
+_ENV_PATH = Path(__file__).parent.parent / ".env"
+if _ENV_PATH.exists():
+    load_dotenv(_ENV_PATH)
+else:
+    load_dotenv()
 
 
 @dataclass
@@ -417,3 +421,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

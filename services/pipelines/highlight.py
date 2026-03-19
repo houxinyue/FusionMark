@@ -1,10 +1,10 @@
-"""
+﻿"""
 MD 高亮渲染 Pipeline
 整合: MinerU + LangExtract + MDRenderer
 文本驱动的高亮方案，支持图片型PDF
 
 注意: 此模块已升级为基于 MDHighlightService 的包装器
-推荐使用 md_highlight_service.py 中的新服务
+推荐使用 services/core/highlight.py 中的新服务
 """
 
 import sys
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 # 导入新的服务
-from md_highlight_service import (
+from services.core.highlight import (
     MDHighlightService,
     MDHighlightConfig,
     ServiceResult
@@ -36,7 +36,7 @@ class MDHighlightPipeline:
         result = pipeline.process(task_id="xxx")
         
         # 新方式（推荐）
-        from md_highlight_service import MDHighlightService
+        from services.core.highlight import MDHighlightService
         service = MDHighlightService.from_config("config.yaml")
         result = service.process(task_id="xxx")
     """
@@ -88,7 +88,7 @@ class MDHighlightPipeline:
         print("MD 高亮渲染 Pipeline (基于 MDHighlightService)")
         print("=" * 70)
         print("提示: 如需更多配置选项，请直接使用 MDHighlightService")
-        print("      参见: md_highlight_service.py 和 md_highlight_service_demo.py")
+        print("      参见: services/core/highlight.py 和 md_highlight_service_demo.py")
         print("=" * 70)
         
         return self._service.process(
@@ -130,3 +130,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

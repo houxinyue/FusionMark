@@ -1,0 +1,8 @@
+version: "1.0"
+change:
+  id: service-layer-refactor
+  title: "服务层代码目录重构"
+  description: "将根目录服务类文件迁移到 services/ 目录，建立清晰的服务层架构"
+  author: houxy
+  status: draft
+  created_at: "2026-03-19"
