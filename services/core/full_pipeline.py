@@ -1,4 +1,4 @@
-﻿"""
+"""
 完整流程服务 - PDF 智能解析与高亮
 整合: MinerU API + LangExtract + MDRenderer
 

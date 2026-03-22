@@ -312,14 +312,47 @@ async function renderPage(pageNumber) {
     const canvas = elements.pdfCanvas;
     const context = canvas.getContext('2d');
     
-    const viewport = page.getViewport({ scale: state.zoomLevel });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    // 修复 PDF 旋转问题：
+    // 1. 获取页面原始旋转角度
+    // 2. 根据旋转角度调整 viewport，确保页面正常显示
+    const rotation = page.rotate || 0;
+    const viewport = page.getViewport({ 
+        scale: state.zoomLevel,
+        rotation: rotation  // 使用 PDF 原始旋转角度，确保正确渲染
+    });
+    
+    // 处理旋转后的画布尺寸
+    // 如果旋转 90 或 270 度，需要交换宽高
+    const isRotated = rotation % 180 !== 0;
+    if (isRotated) {
+        canvas.width = viewport.height;
+        canvas.height = viewport.width;
+    } else {
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+    }
+    
+    // 清除画布
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 保存上下文状态
+    context.save();
+    
+    // 如果画布尺寸与 viewport 不同，需要调整坐标系
+    if (isRotated) {
+        // 旋转画布以适应交换后的尺寸
+        context.translate(canvas.width / 2, canvas.height / 2);
+        context.rotate((rotation * Math.PI) / 180);
+        context.translate(-viewport.width / 2, -viewport.height / 2);
+    }
     
     await page.render({
         canvasContext: context,
         viewport: viewport
     }).promise;
+    
+    // 恢复上下文状态
+    context.restore();
     
     state.currentPage = pageNumber;
     updatePageInfo();

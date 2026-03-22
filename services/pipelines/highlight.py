@@ -1,4 +1,4 @@
-﻿"""
+"""
 MD 高亮渲染 Pipeline
 整合: MinerU + LangExtract + MDRenderer
 文本驱动的高亮方案，支持图片型PDF

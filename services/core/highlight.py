@@ -1,4 +1,4 @@
-﻿"""
+"""
 MD 高亮渲染服务
 可配置的 Pipeline 服务，支持 LangExtract 参数和高亮颜色的灵活配置
 
@@ -23,6 +23,25 @@ from langextract.data import Extraction, ExampleData
 from langextract.factory import ModelConfig
 from langextract.providers.openai import OpenAILanguageModel # 显式导入提供者
 from services.utils.renderer import MDRenderer, HighlightEntity
+
+import logging
+
+# 1. 配置 Python 标准日志，跟踪 HTTP 请求（看 API 等了多久）
+logging.basicConfig(
+    level=logging.DEBUG, 
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+
+# 很多大模型 SDK 底层用的是 httpx，开启它可以看清网络请求的精确时间戳
+logging.getLogger("httpx").setLevel(logging.DEBUG)
+logging.getLogger("httpcore").setLevel(logging.DEBUG)
+
+# 2. 配置 absl 日志级别为 DEBUG (LangExtract 的核心逻辑)
+try:
+    from absl import logging as absl_logging
+    absl_logging.set_verbosity(absl_logging.DEBUG)
+except ImportError:
+    pass
 
 # 加载环境变量 (从 services/ 目录)
 _ENV_PATH = Path(__file__).parent.parent / ".env"
