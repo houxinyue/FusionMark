@@ -1,0 +1,80 @@
+# Chopdiff 坐标映射验证配置
+# 用于测试不同的 Markdown 转换策略
+
+# ============== 实验配置 ==============
+experiment:
+  name: "Chopdiff Markdown→Plain 坐标映射验证"
+  version: "1.0"
+  
+# ============== 文本转换配置 ==============
+conversion:
+  # 是否保留标题结构（作为单独段落）
+  preserve_headings: true
+  
+  # 表格处理方式: "keep_text" | "remove" | "convert_to_list"
+  table_handling: "keep_text"
+  
+  # 列表项是否保留换行
+  list_item_newline: true
+  
+  # 引用块处理方式
+  quote_handling: "flatten"  # flatten: 扁平化为普通文本
+  
+  # 代码块处理方式
+  code_handling: "preserve_content"  # preserve_content: 保留内容，去除标记
+
+# ============== 映射验证配置 ==============
+mapping:
+  # 模糊匹配容错阈值 (0-1)
+  fuzzy_threshold: 0.8
+  
+  # 是否允许跨越 Markdown 标记的匹配
+  allow_cross_boundary: false
+  
+  # 映射失败时的降级策略: "skip" | "fuzzy_search" | "use_plain_coords"
+  fallback_strategy: "fuzzy_search"
+
+# ============== 测试实体定义 ==============
+# 用于验证坐标映射准确性的预期实体
+test_entities:
+  - name: "公司名称"
+    patterns: ["Apple", "Samsung", "Xiaomi", "OPPO", "vivo", "Huawei"]
+    category: "company_name"
+    
+  - name: "数值"
+    patterns: ["\d+\.\d+", "\d+"]
+    category: "numeric_value"
+    
+  - name: "百分比"
+    patterns: ["\d+\.?\d*%"]
+    category: "percentage"
+    
+  - name: "标题"
+    patterns: ["^# .+$", "^## .+$"]
+    category: "heading"
+    is_regex: true
+
+# ============== 输出配置 ==============
+output:
+  # 输出目录
+  directory: "chopdiff_output"
+  
+  # 是否生成可视化映射报告
+  generate_visual_report: true
+  
+  # 是否保留中间文件
+  keep_intermediate: true
+  
+  # 报告格式: "json" | "markdown" | "html"
+  report_format: "markdown"
+
+# ============== 性能测试配置 ==============
+performance:
+  # 是否测量转换耗时
+  measure_timing: true
+  
+  # 大文档测试（字符数）
+  large_document_size: 50000
+  
+  # 迭代次数
+  benchmark_iterations: 10

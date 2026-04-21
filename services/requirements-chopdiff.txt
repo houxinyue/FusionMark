@@ -1,0 +1,14 @@
+# Chopdiff 坐标映射实验依赖
+# 临时依赖文件，用于验证 chopdiff 方案的可行性
+# 
+# 安装方式:
+#   pip install -r requirements-chopdiff.txt
+#   # 或
+#   uv add chopdiff
+
+# 核心依赖: chopdiff - 用于 Markdown ↔ 纯文本 双向坐标映射
+# 文档: https://github.com/jlevy/chopdiff
+chopdiff>=0.5.0
+
+# 可选: 如果需要更精确的句子分割（chopdiff 可选依赖）
+# simplemma>=1.0.0

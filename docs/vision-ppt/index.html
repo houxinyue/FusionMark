@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FusionMark Vision</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    
+    :root {
+      --klein-blue: #002FA7;
+      --hermes-orange: #FF6600;
+      --dark-bg: #050d1a;
+      --card-bg: rgba(0, 47, 167, 0.12);
+    }
+    
+    .reveal {
+      font-family: "Microsoft YaHei", "PingFang SC", "Inter", sans-serif;
+      background: radial-gradient(ellipse at center, #0a1a33 0%, #050d1a 100%);
+    }
+    
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: "Microsoft YaHei", "PingFang SC", "Inter", sans-serif;
+      color: #fff;
+      text-transform: none;
+      letter-spacing: -0.02em;
+    }
+    
+    .reveal h1 { font-size: 1.7em; font-weight: 700; }
+    .reveal h2 { font-size: 1.15em; font-weight: 600; margin-bottom: 0.5em; }
+    .reveal h3 { font-size: 1em; font-weight: 500; }
+    .reveal p, .reveal li { font-size: 0.6em; line-height: 1.5; }
+    
+    /* Slide content wrapper */
+    .slide-content {
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: left;
+      padding: 0 1em;
+    }
+    
+    .slide-center {
+      text-align: center;
+    }
+    
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 47, 167, 0.4);
+      border-radius: 10px;
+      padding: 0.55em 0.9em;
+      margin: 0.35em 0;
+    }
+    
+    .card-orange { border-left: 3px solid var(--hermes-orange); }
+    .card-blue { border-left: 3px solid var(--klein-blue); }
+    .card-light { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+    
+    /* Badges */
+    .badge {
+      display: inline-block;
+      background: var(--hermes-orange);
+      color: #fff;
+      padding: 0.1em 0.4em;
+      border-radius: 3px;
+      font-size: 0.6em;
+      font-weight: 600;
+      margin-right: 0.35em;
+      vertical-align: middle;
+    }
+    
+    /* Lists */
+    .clean-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.6em 0;
+    }
+    .clean-list li {
+      padding: 0.25em 0;
+      padding-left: 1em;
+      position: relative;
+    }
+    .clean-list li::before {
+      content: "▸";
+      color: var(--hermes-orange);
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+    
+    /* Code block */
+    .code-block {
+      font-size: 0.45em !important;
+      text-align: left;
+      background: #111525;
+      border-radius: 8px;
+      padding: 0.8em;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin: 0;
+    }
+    
+    /* Layout helpers */
+    .flex-row {
+      display: flex;
+      gap: 1.2em;
+      justify-content: space-between;
+      align-items: stretch;
+    }
+    .flex-row > * { flex: 1; }
+    
+    .flex-center {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1em;
+    }
+    
+    /* Pipeline / architecture */
+    .pipe-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      padding: 0.4em 0.6em;
+      font-size: 0.5em;
+      display: inline-block;
+      text-align: center;
+      min-width: 80px;
+    }
+    .pipe-arrow {
+      color: var(--hermes-orange);
+      font-size: 0.8em;
+      margin: 0 0.15em;
+    }
+.pipe-layer {
+      background: rgba(0, 47, 167, 0.12);
+      border: 1px solid rgba(0, 47, 167, 0.35);
+      border-radius: 8px;
+      padding: 0.5em 0.7em;
+      margin: 0.25em 0;
+      font-size: 0.68em;
+    }
+    
+    /* Small note */
+    .note {
+      font-size: 0.5em;
+      color: rgba(255,255,255,0.5);
+      margin-top: 0.4em;
+    }
+    
+    /* Cover slogan */
+    .slogan {
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--hermes-orange);
+      margin-top: 1.2em;
+      letter-spacing: 0.04em;
+    }
+    
+    /* Scene cards */
+    .scene-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      padding: 0.8em;
+      text-align: center;
+      border-top: 3px solid var(--hermes-orange);
+    }
+    .scene-icon { font-size: 1.2em; margin-bottom: 0.25em; }
+    .scene-title { font-size: 0.68em; color: #fff; font-weight: 600; }
+    .scene-desc { font-size: 0.5em; color: rgba(255,255,255,0.65); margin-top: 0.25em; }
+    
+    /* Flywheel */
+.wheel-node {
+      border: 2px solid var(--klein-blue);
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-size: 0.45em;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .wheel-arrow {
+      color: var(--hermes-orange);
+      font-size: 1.3em;
+      vertical-align: middle;
+      margin: 0 0.1em;
+    }
+    
+    /* Highlight mockup */
+    .pdf-mock {
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 0.8em;
+      font-size: 0.55em;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.9);
+    }
+    
+    /* Step boxes */
+.step-box {
+      background: rgba(0, 47, 167, 0.18);
+      border: 1px solid rgba(0, 47, 167, 0.45);
+      border-radius: 8px;
+      padding: 0.45em 0.6em;
+      text-align: center;
+      min-width: 120px;
+    }
+    .step-num { color: var(--hermes-orange); font-weight: 600; font-size: 0.65em; }
+    .step-title { color: #fff; font-size: 0.62em; margin-top: 0.2em; }
+    .step-en { color: rgba(255,255,255,0.5); font-size: 0.45em; margin-top: 0.12em; }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      
+      <!-- Slide 1: Cover -->
+      <section>
+        <div class="slide-center" style="margin-top: 3em;">
+          <div style="font-size: 2.4em; font-weight: 700;">FusionMark</div>
+          <div class="slogan" style="font-size: 0.75em;">
+            让文档直接变成模型可用的数据资产
+          </div>
+          <div style="margin-top: 3em; font-size: 0.55em; color: rgba(255,255,255,0.7);">
+            智能文档解析 · 实体自动提取 · 可视化高亮渲染
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 2: Problem -->
+      <section>
+        <h2>
+          文档提取的产出不是文档，而是数据
+        </h2>
+        <div class="slide-content">
+          <div class="card card-orange">
+            <span class="badge">01</span>
+            <span style="font-size: 0.75em; color: #fff;">多模态格式复杂，统一解析困难</span>
+            <div class="note">PDF、Word、PPT、图片等版式千差万别，难以统一处理。</div>
+          </div>
+          <div class="card card-blue">
+            <span class="badge">02</span>
+            <span style="font-size: 0.75em; color: #fff;">人工标注成本高，无法规模化</span>
+            <div class="note">依赖人工标注费用高昂，且难以应对海量文档。</div>
+          </div>
+          <div class="card card-orange">
+            <span class="badge">03</span>
+            <span style="font-size: 0.75em; color: #fff;">提取结果碎片化，难以喂养下游模型</span>
+            <div class="note">提取结果缺乏精确溯源，无法直接用于模型训练。</div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 3: Positioning -->
+      <section>
+        <h2>
+          FusionMark = 高亮可视化 + 结构化数据生产
+        </h2>
+        <div class="slide-content">
+          <ul class="clean-list">
+            <li><b class="highlight-orange">双引擎驱动：</b>MinerU 解析 + LangExtract 提取</li>
+            <li><b class="highlight-blue">零漂移高亮：</b>带坐标溯源的彩色 PDF 标注</li>
+            <li><b class="highlight-orange">数据即养料：</b>同步产出可消费的 JSON 实体</li>
+          </ul>
+          <div class="flex-center" style="margin-top: 1.5em;">
+            <div class="card-light" style="text-align: center; width: 45%;">
+              <div style="font-size: 1.1em;">👁️</div>
+              <div style="font-size: 0.7em; color: #fff; margin-top: 0.2em;">高亮 PDF</div>
+              <div class="note">人工质检与复核界面</div>
+            </div>
+            <div style="font-size: 1em; color: var(--hermes-orange);">⇄</div>
+            <div class="card-light" style="text-align: center; width: 45%;">
+              <div style="font-size: 1.1em;">⚙️</div>
+              <div style="font-size: 0.7em; color: #fff; margin-top: 0.2em;">JSON 实体</div>
+              <div class="note">机器可直接消费的数据资产</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 4: Architecture -->
+      <section>
+        <h2>
+          从任意文档到模型训练数据的完整管道
+        </h2>
+        <div class="slide-content" style="text-align: center;">
+          <div class="pipe-layer">
+            <span class="pipe-box">PDF</span>
+            <span class="pipe-box">Word</span>
+            <span class="pipe-box">PPT</span>
+            <span class="pipe-box">Image</span>
+            <span class="pipe-box">HTML</span>
+          </div>
+          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
+          <div class="pipe-layer" style="background: rgba(0, 47, 167, 0.22);">
+            <span class="pipe-box" style="border-color: var(--klein-blue);">MinerU</span>
+            <span class="pipe-arrow">→</span>
+            <span style="font-size: 0.8em; color: rgba(255,255,255,0.8);">Markdown + 空间位置信息</span>
+          </div>
+          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
+          <div class="pipe-layer">
+            <span class="pipe-box" style="border-color: var(--klein-blue);">DOM-Tracking</span>
+            <span class="pipe-arrow">→</span>
+            <span class="pipe-box" style="border-color: var(--hermes-orange);">LangExtract</span>
+            <span class="pipe-arrow">→</span>
+            <span style="font-size: 0.8em; color: rgba(255,255,255,0.8);">结构化实体</span>
+          </div>
+          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
+          <div class="pipe-layer" style="background: rgba(255, 102, 0, 0.12); border-color: rgba(255, 102, 0, 0.35);">
+            <span class="pipe-box">JSON 数据集</span>
+            <span class="pipe-box" style="margin-left: 0.5em;">高亮 PDF</span>
+            <span class="pipe-arrow" style="margin-left: 0.5em;">→</span>
+            <span class="pipe-box" style="border-color: var(--klein-blue);">RAG / SFT / Agent</span>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 5: DOM-Tracking Tech -->
+      <section>
+        <h2>
+          DOM-Tracking 解决了 Markdown 与纯文本的坐标错位
+        </h2>
+        <div class="slide-content" style="text-align: center;">
+          <div class="flex-center" style="flex-wrap: wrap; gap: 0.4em;">
+            <div class="step-box">
+              <div class="step-num">Step 1</div>
+              <div class="step-title">HTML 节点打标</div>
+              <div class="step-en">注入 data-node-id</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="step-box">
+              <div class="step-num">Step 2</div>
+              <div class="step-title">纯文本拼接</div>
+              <div class="step-en">去除 Markdown 标记干扰</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="step-box">
+              <div class="step-num">Step 3</div>
+              <div class="step-title">LLM 纯净提取</div>
+              <div class="step-en">LangExtract 提取实体</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="step-box" style="border-color: var(--hermes-orange); background: rgba(255,102,0,0.1);">
+              <div class="step-num">Step 4</div>
+              <div class="step-title">坐标回溯高亮</div>
+              <div class="step-en">字符级精准标注</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 1.5em; text-align: left;">
+            <ul class="clean-list">
+              <li><b class="highlight-orange">零漂移：</b>字符级精确标注，彻底解决错位</li>
+              <li><b class="highlight-blue">零伪阳性：</b>只在目标 DOM 节点内高亮</li>
+              <li><b class="highlight-orange">Token 降本：</b>剥离标记后 LLM 成本降低 20-40%</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 6: Data Flywheel -->
+      <section>
+        <h2>
+          标注质量越高，模型越准，反哺提取效果
+        </h2>
+        <div class="slide-content" style="text-align: center; margin-top: 1.5em;">
+          <div class="flex-center" style="flex-wrap: wrap;">
+            <div class="wheel-node">
+              <div style="color: #fff; font-weight: 600;">业务文档</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="wheel-node" style="border-color: var(--hermes-orange);">
+              <div style="color: var(--hermes-orange); font-weight: 600;">自动提取</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="wheel-node">
+              <div style="color: #fff; font-weight: 600;">标注数据</div>
+            </div>
+            <div class="wheel-arrow">→</div>
+            <div class="wheel-node" style="border-color: var(--hermes-orange);">
+              <div style="color: var(--hermes-orange); font-weight: 600;">模型微调</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 2em; text-align: center;">
+            <div style="font-size: 0.75em; color: rgba(255,255,255,0.9);">
+              FusionMark 不是工具，而是 <span class="highlight-orange">数据资产沉淀的入口</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 7: Dual Output -->
+      <section>
+        <h2>
+          一页 PDF 高亮，对应一份 JSON 数据集
+        </h2>
+        <div class="slide-content">
+          <div class="flex-row" style="align-items: stretch;">
+            <div class="card-light" style="display: flex; flex-direction: column;">
+              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">👁️ 高亮 PDF</div>
+              <div class="pdf-mock" style="flex: 1;">
+                <p>根据最新财报，<mark style="background: #2ecc71; color: #000; padding: 1px 4px; border-radius: 3px;">苹果</mark>公司表现强劲。</p>
+                <table style="width:100%; border-collapse: collapse; font-size: 0.9em; margin-top: 0.5em;">
+                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.15);">
+                    <td style="padding: 4px;">品牌</td>
+                    <td style="padding: 4px;">出货量</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 4px;"><mark style="background: #2ecc71; color: #000; padding: 1px 4px; border-radius: 3px;">苹果</mark></td>
+                    <td style="padding: 4px;"><mark style="background: #3498db; color: #fff; padding: 1px 4px; border-radius: 3px;">240.6</mark> M</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="note" style="text-align: center;">人工质检与复核界面</div>
+            </div>
+            <div class="card-light" style="display: flex; flex-direction: column;">
+              <div style="font-size: 0.75em; color: #5d9bff; font-weight: 600; margin-bottom: 0.4em;">⚙️ JSON 实体</div>
+              <pre class="code-block" style="flex: 1; margin: 0;"><code class="json">[
+  {
+    "class": "company_name",
+    "text": "苹果",
+    "char_interval": [12, 14],
+    "node_id": "node_2"
+  },
+  {
+    "class": "shipment_value",
+    "text": "240.6",
+    "char_interval": [45, 50],
+    "node_id": "node_5"
+  }
+]</code></pre>
+              <div class="note" style="text-align: center;">可直接用于 RAG / SFT 训练</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 8: Frontend & API -->
+      <section>
+        <h2>
+          Web 界面即开即用，API 可无缝集成
+        </h2>
+        <div class="slide-content">
+          <div class="flex-row">
+            <div>
+              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">Web 前端</div>
+              <ul class="clean-list">
+                <li>拖拽上传 + URL 输入</li>
+                <li>WebSocket 实时进度推送</li>
+                <li>PDF.js 预览 + 一键下载</li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-size: 0.75em; color: #5d9bff; font-weight: 600; margin-bottom: 0.4em;">API 接口</div>
+              <ul class="clean-list">
+                <li>POST /api/v1/tasks</li>
+                <li>GET /api/v1/tasks/{id}</li>
+                <li>WebSocket /ws/{id}</li>
+              </ul>
+            </div>
+            <div>
+              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">配置驱动</div>
+              <ul class="clean-list">
+                <li>YAML Profile 定义提取规则</li>
+                <li>灵活适配不同领域场景</li>
+                <li>颜色映射 + Few-shot 示例</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 9: Use Cases -->
+      <section>
+        <h2>
+          从知识库构建到模型训练数据生产
+        </h2>
+        <div class="slide-content">
+          <div class="flex-row" style="gap: 0.8em;">
+            <div class="scene-card">
+              <div class="scene-icon">🏛️</div>
+              <div class="scene-title">领域知识库构建</div>
+              <div class="scene-desc">法律、医疗、金融文档结构化，沉淀可检索知识资产</div>
+            </div>
+            <div class="scene-card">
+              <div class="scene-icon">🧠</div>
+              <div class="scene-title">模型训练数据标注</div>
+              <div class="scene-desc">为 SFT 和 RAG 生产高质量结构化语料</div>
+            </div>
+            <div class="scene-card">
+              <div class="scene-icon">📈</div>
+              <div class="scene-title">智能研报分析</div>
+              <div class="scene-desc">自动提取核心指标，生成带标注的数据资产</div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Slide 10: Closing -->
+      <section>
+        <div class="slide-center" style="margin-top: 3.5em;">
+          <div style="font-size: 1.8em; font-weight: 700; color: #fff;">
+            把沉睡的文档，转化为流动的模型燃料
+          </div>
+          <div class="slogan" style="font-size: 0.9em; margin-top: 0.8em;">
+            FusionMark
+          </div>
+          <div style="margin-top: 3em; font-size: 0.5em; color: rgba(255,255,255,0.6); line-height: 1.9;">
+            <div><span style="color: var(--hermes-orange);">开源协议</span> · MIT License</div>
+            <div><span style="color: var(--hermes-orange);">联系邮箱</span> · houxinyue18@outlook.com</div>
+            <div><span style="color: var(--hermes-orange);">项目仓库</span> · github.com/your-repo/fusion-mark</div>
+          </div>
+          <div class="note" style="margin-top: 2em;">Powered by MinerU + LangExtract + WeasyPrint</div>
+        </div>
+      </section>
+      
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      controls: false,
+      progress: true,
+      touch: true,
+      center: true,
+      mouseWheel: true,
+      transition: 'convex',
+      backgroundTransition: 'fade',
+      plugins: [ RevealHighlight ]
+    });
+  </script>
+</body>
+</html>

@@ -22,7 +22,8 @@ import langextract as lx
 from langextract.data import Extraction, ExampleData
 from langextract.factory import ModelConfig
 from langextract.providers.openai import OpenAILanguageModel # 显式导入提供者
-from services.utils.renderer import MDRenderer, HighlightEntity
+from langextract import visualize
+from services.utils.renderer import MDRenderer, DOMTrackingRenderer, HighlightEntity
 
 import logging
 
@@ -174,6 +175,11 @@ class MDHighlightConfig:
     default_title: str = "文档分析报告"
     page_header: str = "文档自动分析报告"
     
+    # === 渲染器选择 ===
+    # "legacy": 传统正则匹配（向后兼容）
+    # "dom_tracking": DOM-Tracking 精准高亮（推荐，需 LangExtract 返回位置）
+    renderer: str = "legacy"  # 默认保持向后兼容
+    
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MDHighlightConfig":
         """从字典创建配置"""
@@ -315,8 +321,24 @@ class MDHighlightService:
         self.output_dir = Path(self.config.output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
-        # 初始化渲染器
-        self.renderer = MDRenderer(colors=self.config.get_color_map())
+        # 初始化渲染器（根据配置选择）
+        self._init_renderer()
+    
+    def _init_renderer(self):
+        """根据配置初始化渲染器"""
+        colors = self.config.get_color_map()
+        renderer_type = self.config.renderer
+        
+        if renderer_type == "dom_tracking":
+            print(f"[*] 使用 DOM-Tracking 渲染器")
+            self.renderer = DOMTrackingRenderer(colors=colors)
+            self.use_dom_tracking = True
+        else:
+            if renderer_type != "legacy":
+                print(f"[!] 未知渲染器 '{renderer_type}'，使用默认 legacy 渲染器")
+            print(f"[*] 使用 Legacy 渲染器（正则匹配）")
+            self.renderer = MDRenderer(colors=colors)
+            self.use_dom_tracking = False
     
     @classmethod
     def from_config(cls, path: Union[str, Path]) -> "MDHighlightService":
@@ -337,12 +359,12 @@ class MDHighlightService:
         
         return cls(config)
     
-    def _run_extraction(self, md_text: str, custom_prompt: Optional[str] = None) -> List[Extraction]:
+    def _run_extraction(self, md_text: str, custom_prompt: Optional[str] = None) -> lx.ExtractionResult:
         """
         使用 LangExtract 提取实体
         :param md_text: Markdown 文本
         :param custom_prompt: 临时覆盖的提示词
-        :return: 提取结果列表
+        :return: 完整提取结果对象（含 extractions 和 metadata）
         """
         print("=" * 60)
         print("Step 1: LangExtract 信息提取")
@@ -368,11 +390,12 @@ class MDHighlightService:
         for i, ext in enumerate(result.extractions, 1):
             print(f"  {i}. [{ext.extraction_class}] {ext.extraction_text}")
         
-        return result.extractions
+        return result
     
     def _convert_to_entities(self, extractions: List[Extraction]) -> List[HighlightEntity]:
         """
         将 LangExtract 结果转换为 HighlightEntity
+        支持提取 char_interval 位置信息（用于 DOM-Tracking 渲染器）
         """
         color_map = self.config.get_color_map()
         entities = []
@@ -380,10 +403,20 @@ class MDHighlightService:
         for ext in extractions:
             category = ext.extraction_class
             color = color_map.get(category)
+            
+            # 提取位置信息（如果 LangExtract 返回了 char_interval）
+            char_start = None
+            char_end = None
+            if hasattr(ext, 'char_interval') and ext.char_interval:
+                char_start = ext.char_interval.start_pos
+                char_end = ext.char_interval.end_pos
+            
             entities.append(HighlightEntity(
                 text=ext.extraction_text,
                 category=category,
-                color=color
+                color=color,
+                char_start=char_start,
+                char_end=char_end
             ))
         
         return entities
@@ -444,12 +477,38 @@ class MDHighlightService:
         result.md_path = md_path
         return result
     
+    def _export_langextract_artifacts(self, result: lx.ExtractionResult, debug_dir: Path):
+        """导出 LangExtract 调试产物（JSON + HTML 可视化）"""
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 1. 导出原始 JSON
+        json_path = debug_dir / "extractions.json"
+        try:
+            data = result.model_dump() if hasattr(result, "model_dump") else result.dict()
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f"  📝 原始提取结果已导出: {json_path}")
+        except Exception as e:
+            print(f"  ⚠️ JSON 导出失败: {e}")
+        
+        # 2. 导出官方 HTML 可视化
+        html_path = debug_dir / "langextract_visual.html"
+        try:
+            colors = self.config.get_color_map()
+            html = visualize(results=result, highlight_colors=colors)
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(html)
+            print(f"  🌐 LangExtract HTML 可视化已导出: {html_path}")
+        except Exception as e:
+            print(f"  ⚠️ HTML 可视化导出失败: {e}")
+    
     def process_text(
         self,
         md_text: str,
         output_filename: Optional[str] = None,
         custom_prompt: Optional[str] = None,
-        custom_title: Optional[str] = None
+        custom_title: Optional[str] = None,
+        export_debug: bool = True
     ) -> ServiceResult:
         """
         直接处理 Markdown 文本
@@ -458,6 +517,7 @@ class MDHighlightService:
         :param output_filename: 输出文件名
         :param custom_prompt: 临时覆盖的提取提示词
         :param custom_title: 临时覆盖的文档标题
+        :param export_debug: 是否导出 LangExtract 调试产物（JSON + HTML）
         :return: ServiceResult
         """
         print("\n" + "=" * 70)
@@ -466,7 +526,8 @@ class MDHighlightService:
         
         # Step 1: LangExtract 提取
         try:
-            extractions = self._run_extraction(md_text, custom_prompt)
+            lx_result = self._run_extraction(md_text, custom_prompt)
+            extractions = lx_result.extractions
         except Exception as e:
             return ServiceResult(
                 success=False,
@@ -478,6 +539,14 @@ class MDHighlightService:
                 success=False,
                 message="没有提取到任何实体"
             )
+        
+        # 导出调试产物
+        if export_debug:
+            debug_dir = self.output_dir / "debug"
+            print(f"\n{'=' * 60}")
+            print("调试产物导出")
+            print(f"{'=' * 60}")
+            self._export_langextract_artifacts(lx_result, debug_dir)
         
         # Step 2: 转换为 HighlightEntity
         entities = self._convert_to_entities(extractions)
@@ -495,12 +564,24 @@ class MDHighlightService:
         title = custom_title or self.config.default_title
         
         try:
-            entity_count, highlight_count = self.renderer.render(
-                md_content=md_text,
-                entities=entities,
-                output_path=str(output_path),
-                title=title
-            )
+            if self.use_dom_tracking:
+                # DOM-Tracking 渲染器返回 (entity_count, highlight_count, stats)
+                entity_count, highlight_count, stats = self.renderer.render(
+                    md_content=md_text,
+                    entities=entities,
+                    output_path=str(output_path),
+                    title=title
+                )
+                print(f"[*] DOM-Tracking 统计: 成功 {stats['success']}, "
+                      f"失败 {stats['fail']}, 跨节点 {stats['cross_node']}")
+            else:
+                # Legacy 渲染器返回 (entity_count, highlight_count)
+                entity_count, highlight_count = self.renderer.render(
+                    md_content=md_text,
+                    entities=entities,
+                    output_path=str(output_path),
+                    title=title
+                )
         except Exception as e:
             return ServiceResult(
                 success=False,
