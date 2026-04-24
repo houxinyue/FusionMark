@@ -329,11 +329,13 @@ Suggested commit format:
 Examples:
 
 ```text
-feat: add highlight parser plugin
-fix: resolve pdf coordinate mapping error
-refactor: split extraction service interface
-docs: update openspec workflow
+feat: 新增高亮解析器插件
+fix: 修复 PDF 坐标映射错误
+refactor: 拆分提取服务接口
+docs: 更新 openspec 工作流
 ```
+
+**Commit Message 语言规则**：所有 Git 提交信息必须使用**中文**书写，确保团队内中文开发者能快速理解提交内容。
 
 Never run `git commit` without user approval.
 
