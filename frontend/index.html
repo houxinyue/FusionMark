@@ -48,36 +48,57 @@
                 <!-- 进度卡片 -->
                 <div class="progress-card" id="progressCard" style="display: none;">
                     <div class="progress-header">
-                        <span class="progress-title">正在处理</span>
+                        <span class="progress-title">处理状态</span>
                         <span class="progress-percent" id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-summary">
+                        <span class="status-badge pending" id="statusBadge">待处理</span>
+                        <span class="current-stage" id="currentStage">等待任务开始</span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill"></div>
                         <div class="progress-glow"></div>
                     </div>
-                    <div class="progress-steps">
-                        <div class="step active" data-step="mineru">
-                            <div class="step-dot"></div>
-                            <span class="step-label">MinerU 解析</span>
+                    <div class="stage-list">
+                        <div class="stage-item" data-stage="mineru">
+                            <div class="stage-main">
+                                <span class="stage-name">MinerU 解析</span>
+                                <span class="stage-state">待处理</span>
+                            </div>
+                            <span class="stage-progress">0%</span>
                         </div>
-                        <div class="step" data-step="extract">
-                            <div class="step-dot"></div>
-                            <span class="step-label">实体提取</span>
+                        <div class="stage-item" data-stage="extraction">
+                            <div class="stage-main">
+                                <span class="stage-name">实体提取</span>
+                                <span class="stage-state">待处理</span>
+                            </div>
+                            <span class="stage-progress">0%</span>
                         </div>
-                        <div class="step" data-step="highlight">
-                            <div class="step-dot"></div>
-                            <span class="step-label">高亮渲染</span>
+                        <div class="stage-item" data-stage="highlight">
+                            <div class="stage-main">
+                                <span class="stage-name">高亮渲染</span>
+                                <span class="stage-state">待处理</span>
+                            </div>
+                            <span class="stage-progress">0%</span>
                         </div>
                     </div>
                     <p class="progress-status" id="progressStatus">初始化中...</p>
+                    <div class="progress-logs">
+                        <div class="progress-logs-header">
+                            <span class="progress-logs-title">实时日志</span>
+                        </div>
+                        <div class="progress-log-list" id="progressLogs"></div>
+                        <p class="progress-log-empty" id="progressLogEmpty">等待任务日志...</p>
+                    </div>
                 </div>
 
                 <!-- 提取实体预览 -->
                 <div class="entities-preview" id="entitiesPreview" style="display: none;">
-                    <h3 class="section-title">提取实体</h3>
-                    <div class="entity-tags" id="entityTags">
-                        <!-- 动态生成 -->
-                    </div>
+                    <h3 class="section-title">文本实体回溯</h3>
+                    <button class="btn btn-secondary btn-entity-trace" id="entityTraceBtn" type="button" disabled>
+                        查看提取结果
+                    </button>
+                    <p class="entity-trace-hint" id="entityTraceHint">任务完成后可查看 LangExtract 提取结果</p>
                 </div>
             </section>
 
@@ -132,6 +153,23 @@
         <footer class="footer">
             <p>FusionMark © 2026 | Powered by MinerU + LangExtract + PyMuPDF</p>
         </footer>
+    </div>
+
+    <div class="entity-modal" id="entityModal" style="display: none;">
+        <div class="entity-modal-backdrop" id="entityModalBackdrop"></div>
+        <div class="entity-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="entityModalTitle">
+            <div class="entity-modal-header">
+                <div>
+                    <h3 class="entity-modal-title" id="entityModalTitle">文本实体回溯</h3>
+                    <p class="entity-modal-subtitle" id="entityModalSubtitle">查看 LangExtract 提取结果</p>
+                </div>
+                <button class="tool-btn entity-modal-close" id="entityModalClose" title="关闭">✕</button>
+            </div>
+            <div class="entity-modal-body">
+                <iframe class="entity-html-frame" id="entityHtmlFrame" title="文本实体回溯结果" style="display: none;"></iframe>
+                <div class="entity-tags" id="entityTags"></div>
+            </div>
+        </div>
     </div>
 
     <!-- 加载 PDF.js -->

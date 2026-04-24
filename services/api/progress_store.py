@@ -101,7 +101,7 @@ class RedisProgressStore:
             "message": "任务已接收，准备处理...",
             "created_at": now,
             "updated_at": now,
-            "result": "",
+            "result": "null",
             # 各阶段详情（JSON 序列化存储）
             "mineru": json.dumps({
                 "state": "pending",

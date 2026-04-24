@@ -21,6 +21,8 @@ class HighlightEntity:
     # DOM-Tracking 支持：位置信息（来自 LangExtract char_interval）
     char_start: Optional[int] = None
     char_end: Optional[int] = None
+    # 对齐状态（来自 LangExtract alignment，可选）
+    alignment_status: Optional[str] = None
     
     def has_position(self) -> bool:
         """是否有位置信息"""
@@ -369,39 +371,30 @@ class DOMTrackingRenderer:
         """构建 DOM 追踪器"""
         return DOMTracker(md_content)
     
-    def render(
+    def highlight(
         self, 
-        md_content: str, 
-        entities: List[HighlightEntity], 
-        output_path: str = "output.pdf",
-        title: str = "Document"
-    ) -> Tuple[int, int, Dict]:
+        tracker: 'DOMTracker', 
+        entities: List[HighlightEntity]
+    ) -> Tuple[str, int, Dict]:
         """
-        执行 DOM-Tracking 渲染
+        对已有的 DOMTracker 执行高亮，返回 HTML 和统计信息
         
-        :param md_content: Markdown 源码
+        :param tracker: 已构建的 DOMTracker 实例
         :param entities: 带位置信息的高亮实体列表
-        :param output_path: 输出 PDF 路径
-        :param title: 文档标题
-        :return: (实体数量, 高亮次数, 统计信息)
+        :return: (html_string, success_count, stats)
         """
-        print(f"[*] DOM-Tracking 渲染，共 {len(entities)} 个实体...")
+        soup = tracker.soup
         
-        # 1. 构建 DOM 追踪
-        tracker = self.build_dom_tracker(md_content)
-        plain_text = tracker.get_plain_text()
-        print(f"[*] Markdown {len(md_content)} 字符 → 纯文本 {len(plain_text)} 字符 "
-              f"(减少 {(1-len(plain_text)/len(md_content))*100:.1f}%)")
-        
-        # 2. 过滤并排序有位置的实体
+        # 过滤并排序有位置的实体（倒序避免位置偏移）
         positioned = [e for e in entities if e.has_position()]
         positioned.sort(key=lambda e: e.char_start, reverse=True)
         
-        print(f"[*] 有位置信息的实体: {len(positioned)}/{len(entities)}")
-        
-        # 3. 执行高亮
-        soup = tracker.soup
-        stats = {"success": 0, "fail": 0, "cross_node": 0, "no_position": len(entities) - len(positioned)}
+        stats = {
+            "success": 0, 
+            "fail": 0, 
+            "cross_node": 0, 
+            "no_position": len(entities) - len(positioned)
+        }
         
         for entity in positioned:
             mapping = tracker.find_node_by_position(entity.char_start, entity.char_end)
@@ -425,11 +418,43 @@ class DOMTrackingRenderer:
             else:
                 stats["fail"] += 1
         
-        # 4. 清理临时属性
+        # 清理临时属性
         for tag in soup.find_all(attrs={"data-node-id": True}):
             del tag['data-node-id']
         
-        # 5. 生成 PDF
+        return str(soup), stats["success"], stats
+    
+    def render(
+        self, 
+        md_content: str, 
+        entities: List[HighlightEntity], 
+        output_path: str = "output.pdf",
+        title: str = "Document"
+    ) -> Tuple[int, int, Dict]:
+        """
+        执行 DOM-Tracking 渲染（端到端：Markdown → PDF）
+        
+        :param md_content: Markdown 源码
+        :param entities: 带位置信息的高亮实体列表
+        :param output_path: 输出 PDF 路径
+        :param title: 文档标题
+        :return: (实体数量, 高亮次数, 统计信息)
+        """
+        print(f"[*] DOM-Tracking 渲染，共 {len(entities)} 个实体...")
+        
+        # 1. 构建 DOM 追踪
+        tracker = self.build_dom_tracker(md_content)
+        plain_text = tracker.get_plain_text()
+        print(f"[*] Markdown {len(md_content)} 字符 → 纯文本 {len(plain_text)} 字符 "
+              f"(减少 {(1-len(plain_text)/len(md_content))*100:.1f}%)")
+        
+        positioned = [e for e in entities if e.has_position()]
+        print(f"[*] 有位置信息的实体: {len(positioned)}/{len(entities)}")
+        
+        # 2. 执行高亮
+        html_string, _, stats = self.highlight(tracker, entities)
+        
+        # 3. 生成 PDF
         print(f"[*] 高亮成功: {stats['success']}, 失败: {stats['fail']}, 跨节点: {stats['cross_node']}")
         print(f"[*] 正在渲染 PDF (WeasyPrint)...")
         
@@ -441,7 +466,7 @@ class DOMTrackingRenderer:
     <title>{title}</title>
 </head>
 <body>
-    {str(soup)}
+    {html_string}
 </body>
 </html>"""
         

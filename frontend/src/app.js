@@ -32,7 +32,28 @@ const state = {
     currentPage: 1,
     zoomLevel: 1.0,
     extractedEntities: [],
-    isProcessing: false
+    isProcessing: false,
+    logs: [],
+    logKeys: new Set(),
+    entityArtifactUrl: null
+};
+
+const STAGE_LABELS = {
+    pending: '准备中',
+    mineru: 'MinerU',
+    extraction: '提取',
+    highlight: '渲染',
+    completed: '完成',
+    failed: '失败'
+};
+
+const STAGE_DISPLAY_NAMES = {
+    pending: '准备中',
+    mineru: 'MinerU 解析',
+    extraction: '实体提取',
+    highlight: '高亮渲染',
+    completed: '处理完成',
+    failed: '处理失败'
 };
 
 // ============================================
@@ -46,7 +67,18 @@ const elements = {
     progressFill: document.getElementById('progressFill'),
     progressPercent: document.getElementById('progressPercent'),
     progressStatus: document.getElementById('progressStatus'),
+    statusBadge: document.getElementById('statusBadge'),
+    currentStage: document.getElementById('currentStage'),
+    progressLogs: document.getElementById('progressLogs'),
+    progressLogEmpty: document.getElementById('progressLogEmpty'),
     entitiesPreview: document.getElementById('entitiesPreview'),
+    entityTraceBtn: document.getElementById('entityTraceBtn'),
+    entityTraceHint: document.getElementById('entityTraceHint'),
+    entityModal: document.getElementById('entityModal'),
+    entityModalBackdrop: document.getElementById('entityModalBackdrop'),
+    entityModalClose: document.getElementById('entityModalClose'),
+    entityModalSubtitle: document.getElementById('entityModalSubtitle'),
+    entityHtmlFrame: document.getElementById('entityHtmlFrame'),
     entityTags: document.getElementById('entityTags'),
     emptyState: document.getElementById('emptyState'),
     pdfViewer: document.getElementById('pdfViewer'),
@@ -97,6 +129,16 @@ function initEventListeners() {
     
     // 下载按钮
     elements.downloadBtn.addEventListener('click', downloadResult);
+
+    // 实体回溯弹窗
+    elements.entityTraceBtn.addEventListener('click', openEntityModal);
+    elements.entityModalClose.addEventListener('click', closeEntityModal);
+    elements.entityModalBackdrop.addEventListener('click', closeEntityModal);
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && elements.entityModal.style.display !== 'none') {
+            closeEntityModal();
+        }
+    });
 }
 
 // ============================================
@@ -130,13 +172,16 @@ async function processFile(file) {
 }
 
 async function processURL(url) {
+    resetProgressUI();
     showProgress();
     updateProgress(5, '正在提交任务...');
+    appendLog('pending', '正在提交任务...');
     
     try {
         // 提交任务
         const taskId = await submitTask(url);
-        updateProgress(10, '任务已提交，等待处理...');
+        updateProgress(5, '任务已提交，等待处理...');
+        appendLog('pending', '任务已提交，等待处理...');
         
         // 连接 WebSocket 获取实时进度
         connectWebSocket(taskId);
@@ -201,17 +246,94 @@ function showProgress() {
     elements.entitiesPreview.style.display = 'block';
 }
 
+function resetProgressUI() {
+    state.logs = [];
+    state.logKeys = new Set();
+    elements.downloadBtn.style.display = 'none';
+    elements.entityTraceBtn.disabled = true;
+    elements.entityTraceHint.textContent = '任务完成后可查看 LangExtract 提取结果';
+    elements.entityModalSubtitle.textContent = '查看 LangExtract 提取结果';
+    elements.entityHtmlFrame.src = '';
+    elements.entityHtmlFrame.srcdoc = '';
+    elements.entityHtmlFrame.style.display = 'none';
+    elements.entityTags.innerHTML = '';
+    state.entityArtifactUrl = null;
+    closeEntityModal();
+    updateProgress(0, '初始化中...');
+    updateSummary('pending', '等待任务开始');
+    renderLogs();
+
+    document.querySelectorAll('.stage-item').forEach((item) => {
+        item.classList.remove('active', 'completed', 'failed');
+        const stage = item.dataset.stage;
+        const stateEl = item.querySelector('.stage-state');
+        const progressEl = item.querySelector('.stage-progress');
+        if (stateEl) {
+            stateEl.textContent = '待处理';
+        }
+        if (progressEl) {
+            progressEl.textContent = '0%';
+        }
+        if (stage === 'mineru') {
+            item.classList.add('active');
+            if (stateEl) {
+                stateEl.textContent = '准备中';
+            }
+        }
+    });
+}
+
 function updateProgress(percent, status) {
     elements.progressFill.style.width = `${percent}%`;
     elements.progressPercent.textContent = `${percent}%`;
     elements.progressStatus.textContent = status;
 }
 
+function updateSummary(status, currentStageText) {
+    const badge = elements.statusBadge;
+    badge.classList.remove('pending', 'processing', 'completed', 'failed');
+    badge.classList.add(status || 'pending');
+    badge.textContent = getStatusLabel(status);
+    elements.currentStage.textContent = currentStageText;
+}
+
+function getStatusLabel(status) {
+    const labels = {
+        pending: '待处理',
+        processing: '处理中',
+        completed: '已完成',
+        failed: '失败'
+    };
+    return labels[status] || '未知';
+}
+
+function getStageLabel(stage) {
+    return STAGE_DISPLAY_NAMES[stage] || stage;
+}
+
+function getStepStateLabel(stepState) {
+    const labels = {
+        pending: '待处理',
+        running: '进行中',
+        completed: '已完成',
+        done: '已完成',
+        failed: '失败'
+    };
+    return labels[stepState] || '待处理';
+}
+
 function updateStep(stepName, status) {
-    const step = document.querySelector(`[data-step="${stepName}"]`);
-    if (step) {
-        step.classList.remove('active', 'completed');
-        step.classList.add(status);
+    const mappedStage = stepName === 'extract' ? 'extraction' : stepName;
+    const item = document.querySelector(`.stage-item[data-stage="${mappedStage}"]`);
+    if (!item) return;
+
+    item.classList.remove('active', 'completed', 'failed');
+    item.classList.add(status);
+
+    const stateEl = item.querySelector('.stage-state');
+    if (stateEl) {
+        const mappedStatus = status === 'active' ? 'running' : status;
+        stateEl.textContent = getStepStateLabel(mappedStatus);
     }
 }
 
@@ -236,6 +358,9 @@ function addSampleEntities() {
 }
 
 function renderEntityTags() {
+    elements.entityHtmlFrame.src = '';
+    elements.entityHtmlFrame.srcdoc = '';
+    elements.entityHtmlFrame.style.display = 'none';
     elements.entityTags.innerHTML = state.extractedEntities.map(entity => {
         const config = ENTITY_COLORS[entity.type] || ENTITY_COLORS.data_source;
         const className = entity.type.includes('company') ? 'company' :
@@ -249,37 +374,92 @@ function renderEntityTags() {
             </span>
         `;
     }).join('');
+    elements.entityTraceBtn.disabled = state.extractedEntities.length === 0;
+    elements.entityTraceHint.textContent = state.extractedEntities.length > 0
+        ? `已准备 ${state.extractedEntities.length} 条实体，可点击按钮查看`
+        : '暂无可展示的提取结果';
 }
 
 function renderEntitiesFromResult(result) {
-    // 从后端返回的分类计数生成实体展示
+    // fallback：从后端返回的分类计数生成实体展示
     const categoryCounts = result.category_counts || {};
     const entities = [];
-    
-    // 这里简化展示，实际应该从后端获取详细的提取实体列表
-    // 目前只展示分类统计
     for (const [category, count] of Object.entries(categoryCounts)) {
-        entities.push({
-            text: `${category}: ${count}个`,
-            type: category
-        });
+        entities.push({ text: `${category}: ${count}个`, type: category });
     }
-    
     if (entities.length > 0) {
         state.extractedEntities = entities;
+        elements.entityModalSubtitle.textContent = '当前展示提取分类统计摘要';
         renderEntityTags();
     }
 }
 
+function enableEntityTraceButton(taskId, result) {
+    // WebSocket 完成后仅启用按钮、记录 artifact 地址，不预加载 HTML
+    state.entityArtifactUrl = `${CONFIG.API_BASE_URL}/api/v1/tasks/${taskId}/artifacts/langextract_html`;
+    elements.entityTraceBtn.disabled = false;
+    elements.entityTraceHint.textContent = 'LangExtract 可视化结果已就绪，点击按钮查看';
+    elements.entityModalSubtitle.textContent = '当前展示 LangExtract 官方完整 HTML 视图';
+}
+
+async function loadEntityArtifact() {
+    // 点击弹窗按钮时才加载 HTML 内容到 iframe
+    if (!state.entityArtifactUrl || !state.currentTask) return;
+
+    // 已加载过则直接展示
+    if (elements.entityHtmlFrame.srcdoc) {
+        elements.entityHtmlFrame.style.display = 'block';
+        return;
+    }
+
+    try {
+        const response = await fetch(state.entityArtifactUrl);
+        if (response.ok) {
+            const html = await response.text();
+            elements.entityTags.innerHTML = '';
+            elements.entityHtmlFrame.src = '';
+            elements.entityHtmlFrame.srcdoc = html;
+            elements.entityHtmlFrame.style.display = 'block';
+            return;
+        }
+    } catch (e) {
+        console.warn('加载 LangExtract HTML 失败:', e);
+    }
+
+    // fallback：展示分类统计
+    if (state.currentTask) {
+        try {
+            const resp = await fetch(`${CONFIG.API_BASE_URL}/api/v1/tasks/${state.currentTask}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.result) renderEntitiesFromResult(data.result);
+            }
+        } catch (e) {
+            console.warn('Fallback 加载失败:', e);
+        }
+    }
+}
+
+async function openEntityModal() {
+    if (elements.entityTraceBtn.disabled) return;
+    elements.entityModal.style.display = 'block';
+    await loadEntityArtifact();
+}
+
+function closeEntityModal() {
+    elements.entityModal.style.display = 'none';
+}
+
 async function loadResultPreview(taskId) {
     try {
-        // 先尝试获取任务状态，确认结果文件路径
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/v1/tasks/${taskId}`);
         if (!response.ok) throw new Error('获取任务状态失败');
         
         const taskData = await response.json();
+        if (taskData.result) {
+            enableEntityTraceButton(taskId, taskData.result);
+        }
         if (taskData.result && taskData.result.output_path) {
-            // 使用下载接口加载PDF预览
             const pdfUrl = `${CONFIG.API_BASE_URL}/api/v1/tasks/${taskId}/download`;
             await loadPDF(pdfUrl);
         }
@@ -440,6 +620,11 @@ function handleWebSocketMessage(data) {
     if (data.type === 'connected') {
         console.log('[WebSocket] 初始状态:', data.data);
         const taskData = data.data;
+        renderTaskState(taskData);
+        if (taskData.status === 'completed' && taskData.result) {
+            enableEntityTraceButton(state.currentTask, taskData.result);
+            elements.downloadBtn.style.display = 'inline-flex';
+        }
         if (taskData.status === 'failed') {
             handleTaskFailed(taskData.message || '任务处理失败');
         }
@@ -454,28 +639,15 @@ function handleWebSocketMessage(data) {
     if (data.type === 'progress') {
         const taskData = data.data;
         console.log('[WebSocket] 进度更新:', taskData);
-        const { progress, status, message, result } = taskData;
-        
-        // 使用新的分阶段进度
-        if (progress && progress.stage) {
-            updateProgressByStage(progress);
-        } else {
-            // 兼容旧格式
-            const percent = calculateProgressPercent(progress, status);
-            updateProgress(percent, message || getStatusMessage(status));
-            updateStepsByProgress(progress, status);
-        }
+        const { status, message, result } = taskData;
+        renderTaskState(taskData);
         
         // 完成
         if (status === 'completed') {
-            updateStep('highlight', 'completed');
             elements.downloadBtn.style.display = 'inline-flex';
             showNotification('处理完成！', 'success');
             state.isProcessing = false;
-            
-            if (result && result.category_counts) {
-                renderEntitiesFromResult(result);
-            }
+            appendLog('completed', '处理完成');
             loadResultPreview(state.currentTask);
         }
         
@@ -486,83 +658,143 @@ function handleWebSocketMessage(data) {
     }
 }
 
-function updateProgressByStage(progress) {
-    const stage = progress.stage;
+function renderTaskState(taskData) {
+    const progress = normalizeProgressData(taskData);
+    const status = taskData.status || 'pending';
+    const currentStage = progress.stage || status;
     const stageProgress = progress.stage_progress || 0;
     const overallProgress = progress.overall_progress || 0;
-    
-    // 阶段名称映射
-    const stageNames = {
-        'pending': '准备中',
-        'mineru': 'MinerU 解析',
-        'extraction': '实体提取',
-        'highlight': '高亮渲染',
-        'completed': '处理完成',
-        'failed': '处理失败'
-    };
-    
-    // 更新总体进度条
-    updateProgress(overallProgress, `${stageNames[stage] || stage}: ${stageProgress}%`);
-    
-    // 更新各步骤状态 - 注意后端阶段名和前端 data-step 的映射
-    const stepMapping = {
-        'mineru': 'mineru',
-        'extraction': 'extract',  // 后端叫 extraction，前端叫 extract
-        'highlight': 'highlight'
-    };
-    
-    // 遍历所有阶段，更新状态
-    for (const [backendStage, frontendStep] of Object.entries(stepMapping)) {
-        const el = document.querySelector(`[data-step="${frontendStep}"]`);
-        if (!el) continue;
-        
-        const stepData = progress[backendStage];
-        if (!stepData) continue;
-        
-        const stepState = stepData.state;
-        
-        // 清除旧状态
-        el.classList.remove('active', 'completed', 'failed');
-        
-        // 判断步骤状态
-        // 如果当前阶段是此阶段或之后，且状态为 completed，则标记为完成
-        // 如果当前阶段正是此阶段且状态为 running，则标记为活跃
-        const stageOrder = ['mineru', 'extraction', 'highlight'];
-        const currentStageIndex = stageOrder.indexOf(stage);
-        const thisStageIndex = stageOrder.indexOf(backendStage);
-        
-        if (stepState === 'completed' || stepState === 'done') {
-            el.classList.add('completed');
-        } else if (stepState === 'running' || (stage === backendStage && stepState !== 'pending')) {
-            el.classList.add('active');
-            // 更新步骤进度文本
-            const label = el.querySelector('.step-label');
-            if (label && stepData.progress !== undefined) {
-                const baseText = {
-                    'mineru': 'MinerU 解析',
-                    'extraction': '实体提取',
-                    'highlight': '高亮渲染'
-                }[backendStage];
-                label.textContent = `${baseText} (${stepData.progress}%)`;
-            }
-        } else if (stepState === 'failed') {
-            el.classList.add('failed');
-        } else if (thisStageIndex < currentStageIndex) {
-            // 当前阶段之前的阶段都标记为完成
-            el.classList.add('completed');
-        }
+    const message = taskData.message || `${getStageLabel(currentStage)} ${stageProgress}%`;
+
+    updateProgress(overallProgress, message);
+    updateSummary(status, `当前阶段：${getStageLabel(currentStage)} (${stageProgress}%)`);
+    updateStageRows(progress, currentStage);
+    appendLogsFromProgress(progress, status);
+}
+
+function normalizeProgressData(taskData) {
+    if (taskData.progress && taskData.progress.stage) {
+        return taskData.progress;
     }
+
+    return {
+        stage: taskData.stage || 'pending',
+        stage_progress: taskData.stage_progress || 0,
+        overall_progress: taskData.overall_progress || 0,
+        mineru: taskData.mineru || { state: 'pending', progress: 0, logs: [] },
+        extraction: taskData.extraction || { state: 'pending', progress: 0, logs: [] },
+        highlight: taskData.highlight || { state: 'pending', progress: 0, logs: [] }
+    };
+}
+
+function updateStageRows(progress, currentStage) {
+    const stageOrder = ['mineru', 'extraction', 'highlight'];
+
+    stageOrder.forEach((stage) => {
+        const item = document.querySelector(`.stage-item[data-stage="${stage}"]`);
+        if (!item) return;
+
+        const stageData = progress[stage] || { state: 'pending', progress: 0 };
+        const stateEl = item.querySelector('.stage-state');
+        const progressEl = item.querySelector('.stage-progress');
+        const stateValue = stageData.state || 'pending';
+        const progressValue = stageData.progress ?? 0;
+
+        item.classList.remove('active', 'completed', 'failed');
+
+        if (stateValue === 'completed' || stateValue === 'done') {
+            item.classList.add('completed');
+        } else if (stateValue === 'failed') {
+            item.classList.add('failed');
+        } else if (stateValue === 'running' || currentStage === stage) {
+            item.classList.add('active');
+        }
+
+        if (stateEl) {
+            stateEl.textContent = getStepStateLabel(stateValue);
+        }
+        if (progressEl) {
+            progressEl.textContent = `${progressValue}%`;
+        }
+    });
+}
+
+function appendLogsFromProgress(progress, status) {
+    ['mineru', 'extraction', 'highlight'].forEach((stage) => {
+        const logs = progress[stage]?.logs;
+        if (!Array.isArray(logs)) return;
+
+        logs.forEach((text) => {
+            appendLog(stage, text, status === 'failed' && progress.stage === stage ? 'failed' : 'info');
+        });
+    });
+}
+
+function appendLog(stage, text, level = 'info') {
+    if (!text) return;
+
+    const normalized = String(text).trim();
+    if (!normalized) return;
+
+    const key = `${stage}|${normalized}`;
+    if (state.logKeys.has(key)) {
+        return;
+    }
+
+    state.logKeys.add(key);
+    state.logs.push({
+        key,
+        stage,
+        text: normalized,
+        level,
+        time: formatLogTime(new Date())
+    });
+
+    renderLogs();
+}
+
+function renderLogs() {
+    if (!state.logs.length) {
+        elements.progressLogs.innerHTML = '';
+        elements.progressLogEmpty.style.display = 'block';
+        return;
+    }
+
+    elements.progressLogEmpty.style.display = 'none';
+    elements.progressLogs.innerHTML = state.logs.map((log) => `
+        <div class="progress-log-item ${log.level === 'failed' ? 'failed' : ''}">
+            <span class="progress-log-stage">[${STAGE_LABELS[log.stage] || log.stage}]</span>
+            <span class="progress-log-time">${log.time}</span>
+            <span class="progress-log-text">${escapeHtml(log.text)}</span>
+        </div>
+    `).join('');
+
+    elements.progressLogs.scrollTop = elements.progressLogs.scrollHeight;
+}
+
+function escapeHtml(value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function formatLogTime(date) {
+    return date.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
 }
 
 function handleTaskFailed(message) {
     // 更新UI显示失败状态
     updateProgress(0, `失败: ${message}`);
-    
-    // 重置所有步骤为失败状态
-    document.querySelectorAll('.step').forEach(step => {
-        step.classList.remove('active', 'completed');
-        step.classList.add('failed');
-    });
+    updateSummary('failed', '当前阶段：处理失败');
+    appendLog('failed', message, 'failed');
     
     // 显示错误通知
     showNotification(message, 'error');

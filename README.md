@@ -56,6 +56,19 @@
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   存储层 (Storage Provider)               │   │
+│  │                                                          │   │
+│  │   ┌──────────────┐         ┌──────────────┐             │   │
+│  │   │ LocalProvider│         │MinioProvider │             │   │
+│  │   │  (本地文件)   │         │  (对象存储)   │             │   │
+│  │   └──────────────┘         └──────────────┘             │   │
+│  │                                                          │   │
+│  │   • Workspace 临时工作区    • 产物持久化                   │   │
+│  │   • 任务完成后自动清理      • Artifacts API               │   │
+│  │                                                          │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
 │  │                   配置管理 (Profiles)                     │   │
 │  │                                                          │   │
 │  │   • YAML 配置文件   • 提取提示词模板   • 类别颜色映射      │   │
@@ -83,7 +96,46 @@ PDF URL → MinerU API → full.md (Markdown 文本)
                                 │
                                 ▼
                         高亮 PDF 输出
+                                │
+                                ▼
+              ┌─────────────────────────────────┐
+              │  Workspace: workspaces/{task_id}/│
+              │   • mineru/ (zip + extracted)    │
+              │   • highlight/ (PDF + debug)     │
+              └─────────────────────────────────┘
+                                │
+                                ▼
+              ┌─────────────────────────────────┐
+              │  Storage Provider 持久化         │
+              │   • tasks/{task_id}/mineru/      │
+              │   • tasks/{task_id}/langextract/ │
+              │   • tasks/{task_id}/highlight/   │
+              └─────────────────────────────────┘
+                                │
+                                ▼
+                        自动清理 Workspace
 ```
+
+### 存储架构
+
+FusionMark 采用 **Storage Provider 插件架构**，支持两种存储后端，通过环境变量切换：
+
+| Provider | 适用场景 | 数据位置 |
+|---|---|---|
+| `local` | 本地开发 | `storage/` 目录（可配置） |
+| `minio` | 生产/多实例 | MinIO 对象存储桶 |
+
+**Workspace 机制**：
+- 任务运行时，MinerU 和 Highlight 产物先写入临时工作区 `workspaces/{task_id}/`
+- 任务完成后，产物自动上传至 Storage Provider，然后清理本地工作区
+- 下载接口优先检查本地文件，缺失时自动回退到 Storage Provider 读取
+
+**Artifacts API**：
+- `GET /api/v1/tasks/{task_id}/artifacts/langextract_html` — 获取 LangExtract HTML 可视化
+- `GET /api/v1/tasks/{task_id}/artifacts/entities` — 获取结构化提取结果（JSONL）
+- `GET /api/v1/tasks/{task_id}/artifacts/highlight_pdf` — 获取高亮 PDF
+
+> Redis 中不再存储完整的 `langextract_html` 和 `entities`，前端通过 Artifacts API 按需拉取，显著减轻 Redis payload。
 
 ---
 
@@ -127,6 +179,27 @@ DS_API_BASE_URL=https://api.deepseek.com
 
 # Redis 配置 (可选，用于 Celery)
 REDIS_URL=redis://localhost:6379/0
+
+# ===== Storage Provider 配置 =====
+STORAGE_PROVIDER=local              # local 或 minio
+LOCAL_STORAGE_ROOT=storage          # 本地存储根目录
+
+# MinIO 配置（STORAGE_PROVIDER=minio 时生效）
+MINIO_ENDPOINT=127.0.0.1:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=fusion-mark
+MINIO_SECURE=false
+MINIO_PREFIX=fusion-mark
+
+# Workspace 配置
+WORKSPACE_ROOT=workspaces
+CLEAN_WORKSPACE_AFTER_UPLOAD=true   # 上传后自动清理工作区
+
+# 产物持久化开关
+STORE_MINERU_EXTRACTED=true
+STORE_LANGEXTRACT_ARTIFACTS=true
+STORE_HIGHLIGHT_ARTIFACTS=true
 ```
 
 ### 4. 启动服务
@@ -193,6 +266,19 @@ ws.onmessage = (event) => {
 
 ```bash
 GET /api/v1/tasks/{task_id}/download
+```
+
+### 获取任务产物 (Artifacts)
+
+```bash
+# LangExtract HTML 可视化
+GET /api/v1/tasks/{task_id}/artifacts/langextract_html
+
+# 结构化提取结果 (JSONL)
+GET /api/v1/tasks/{task_id}/artifacts/entities
+
+# 高亮 PDF
+GET /api/v1/tasks/{task_id}/artifacts/highlight_pdf
 ```
 
 详细 API 文档请参见 [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)

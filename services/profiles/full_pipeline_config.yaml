@@ -121,6 +121,7 @@ highlight_config:
   # 渲染配置
   default_title: "文档分析报告"
   page_header: "文档自动分析报告"
+  renderer: "dom_tracking"             # 默认使用 DOM-Tracking；legacy 保留为兼容回退方案
 
 # === 最终输出配置 ===
 final_output_dir: "highlight_output"

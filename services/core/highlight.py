@@ -176,9 +176,9 @@ class MDHighlightConfig:
     page_header: str = "文档自动分析报告"
     
     # === 渲染器选择 ===
-    # "legacy": 传统正则匹配（向后兼容）
-    # "dom_tracking": DOM-Tracking 精准高亮（推荐，需 LangExtract 返回位置）
-    renderer: str = "legacy"  # 默认保持向后兼容
+    # "legacy": 传统正则匹配（兼容回退方案，保留但不再默认）
+    # "dom_tracking": DOM-Tracking 精准高亮（默认推荐）
+    renderer: str = "dom_tracking"
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MDHighlightConfig":
@@ -319,7 +319,8 @@ class MDHighlightService:
         self.config = config or MDHighlightConfig()
         self.finder = MinerUOutputFinder(self.config.mineru_output_dir)
         self.output_dir = Path(self.config.output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+        # 延迟创建目录：避免服务启动时就生成 highlight_output/mineru_output
+        # 实际写入时由 render 或 _export_langextract_artifacts 负责创建
         
         # 初始化渲染器（根据配置选择）
         self._init_renderer()
@@ -359,10 +360,10 @@ class MDHighlightService:
         
         return cls(config)
     
-    def _run_extraction(self, md_text: str, custom_prompt: Optional[str] = None) -> lx.ExtractionResult:
+    def _run_extraction(self, text: str, custom_prompt: Optional[str] = None) -> lx.data.AnnotatedDocument:
         """
         使用 LangExtract 提取实体
-        :param md_text: Markdown 文本
+        :param text: 输入文本（Markdown 或纯文本，取决于渲染模式）
         :param custom_prompt: 临时覆盖的提示词
         :return: 完整提取结果对象（含 extractions 和 metadata）
         """
@@ -378,7 +379,7 @@ class MDHighlightService:
         
         result = lx.extract(
             examples=examples,
-            text_or_documents=md_text,
+            text_or_documents=text,
             prompt_description=prompt,
             config=self.config.model_config.get_model_config()
         )
@@ -477,30 +478,61 @@ class MDHighlightService:
         result.md_path = md_path
         return result
     
-    def _export_langextract_artifacts(self, result: lx.ExtractionResult, debug_dir: Path):
-        """导出 LangExtract 调试产物（JSON + HTML 可视化）"""
+    def _export_langextract_artifacts(self, result: lx.data.AnnotatedDocument, debug_dir: Path,
+                                      html_content: Optional[str] = None):
+        """导出 LangExtract 调试产物（JSONL + HTML 可视化）"""
         debug_dir.mkdir(parents=True, exist_ok=True)
         
-        # 1. 导出原始 JSON
-        json_path = debug_dir / "extractions.json"
+        # 1. 导出 JSONL
         try:
-            data = result.model_dump() if hasattr(result, "model_dump") else result.dict()
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            print(f"  📝 原始提取结果已导出: {json_path}")
+            lx.io.save_annotated_documents(
+                annotated_documents=iter([result]),
+                output_name="extractions.jsonl",
+                output_dir=str(debug_dir)
+            )
+            print(f"  📝 原始提取结果已导出: {debug_dir / 'extractions.jsonl'}")
         except Exception as e:
-            print(f"  ⚠️ JSON 导出失败: {e}")
+            print(f"  ⚠️ JSONL 导出失败: {e}")
         
-        # 2. 导出官方 HTML 可视化
+        # 2. 导出官方 HTML 可视化（使用 LangExtract 默认配色）
         html_path = debug_dir / "langextract_visual.html"
         try:
-            colors = self.config.get_color_map()
-            html = visualize(results=result, highlight_colors=colors)
+            html = html_content if html_content is not None else visualize(result)
+            if html is None:
+                raise ValueError("LangExtract HTML 内容为空")
             with open(html_path, 'w', encoding='utf-8') as f:
                 f.write(html)
             print(f"  🌐 LangExtract HTML 可视化已导出: {html_path}")
         except Exception as e:
             print(f"  ⚠️ HTML 可视化导出失败: {e}")
+
+    def _serialize_extractions(self, extractions: List[Extraction]) -> List[Dict[str, Any]]:
+        """将 LangExtract 提取结果转换为可序列化结构，供 Redis/前端消费。"""
+        serialized = []
+
+        for ext in extractions:
+            char_start = None
+            char_end = None
+            if hasattr(ext, "char_interval") and ext.char_interval:
+                char_start = ext.char_interval.start_pos
+                char_end = ext.char_interval.end_pos
+
+            serialized.append({
+                "text": ext.extraction_text,
+                "category": ext.extraction_class,
+                "char_start": char_start,
+                "char_end": char_end
+            })
+
+        return serialized
+
+    def _build_langextract_html(self, result: lx.data.AnnotatedDocument) -> Optional[str]:
+        """生成 LangExtract 官方 HTML 可视化字符串。"""
+        try:
+            return visualize(result)
+        except Exception as e:
+            print(f"  ⚠️ LangExtract HTML 生成失败: {e}")
+            return None
     
     def process_text(
         self,
@@ -524,9 +556,19 @@ class MDHighlightService:
         print("MD 高亮渲染服务 (文本模式)")
         print("=" * 70)
         
+        # DOM-Tracking 模式：预处理 Markdown → 纯文本，确保坐标系对齐
+        if self.use_dom_tracking:
+            print("\n[*] DOM-Tracking 模式：Markdown → 纯文本预处理")
+            temp_tracker = self.renderer.build_dom_tracker(md_text)
+            extract_text = temp_tracker.get_plain_text()
+            print(f"[*] Markdown {len(md_text)} 字符 → 纯文本 {len(extract_text)} 字符 "
+                  f"(减少 {(1 - len(extract_text)/len(md_text))*100:.1f}%)")
+        else:
+            extract_text = md_text
+        
         # Step 1: LangExtract 提取
         try:
-            lx_result = self._run_extraction(md_text, custom_prompt)
+            lx_result = self._run_extraction(extract_text, custom_prompt)
             extractions = lx_result.extractions
         except Exception as e:
             return ServiceResult(
@@ -540,13 +582,16 @@ class MDHighlightService:
                 message="没有提取到任何实体"
             )
         
+        langextract_html = self._build_langextract_html(lx_result)
+        serialized_extractions = self._serialize_extractions(extractions)
+
         # 导出调试产物
         if export_debug:
             debug_dir = self.output_dir / "debug"
             print(f"\n{'=' * 60}")
             print("调试产物导出")
             print(f"{'=' * 60}")
-            self._export_langextract_artifacts(lx_result, debug_dir)
+            self._export_langextract_artifacts(lx_result, debug_dir, html_content=langextract_html)
         
         # Step 2: 转换为 HighlightEntity
         entities = self._convert_to_entities(extractions)
@@ -559,6 +604,9 @@ class MDHighlightService:
         if output_filename is None:
             import uuid
             output_filename = f"highlighted_{uuid.uuid4().hex[:8]}.pdf"
+        
+        # 延迟创建输出目录
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
         output_path = self.output_dir / output_filename
         title = custom_title or self.config.default_title
@@ -603,7 +651,11 @@ class MDHighlightService:
             extraction_count=len(extractions),
             highlight_count=highlight_count,
             message="处理成功",
-            details={"category_counts": category_counts}
+            details={
+                "category_counts": category_counts,
+                "entities": serialized_extractions,
+                "langextract_html": langextract_html
+            }
         )
     
     def _print_summary(self, output_path: Path, extraction_count: int, 

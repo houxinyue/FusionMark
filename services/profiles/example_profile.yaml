@@ -98,5 +98,6 @@ mineru_output_dir: "mineru_output"
 output_dir: "highlight_output"
 
 # === 渲染配置 ===
+renderer: "dom_tracking"  # 默认使用 DOM-Tracking；legacy 保留为兼容回退方案
 default_title: "文档分析报告"
 page_header: "文档自动分析报告"

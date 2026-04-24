@@ -36,6 +36,27 @@ DS_API_BASE_URL=https://api.deepseek.com
 
 # Redis 配置 (可选)
 REDIS_URL=redis://localhost:6379/0
+
+# ===== Storage Provider 配置 =====
+STORAGE_PROVIDER=local              # local 或 minio
+LOCAL_STORAGE_ROOT=storage          # 本地存储根目录
+
+# MinIO 配置（STORAGE_PROVIDER=minio 时生效）
+MINIO_ENDPOINT=127.0.0.1:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=fusion-mark
+MINIO_SECURE=false
+MINIO_PREFIX=fusion-mark
+
+# Workspace 配置
+WORKSPACE_ROOT=workspaces
+CLEAN_WORKSPACE_AFTER_UPLOAD=true   # 上传后自动清理工作区
+
+# 产物持久化开关
+STORE_MINERU_EXTRACTED=true
+STORE_LANGEXTRACT_ARTIFACTS=true
+STORE_HIGHLIGHT_ARTIFACTS=true
 ```
 
 ### 3. 启动服务
@@ -58,21 +79,26 @@ uvicorn api.server:app --reload --host 0.0.0.0 --port 8000
 ```
 services/
 ├── api/                  # API 层 (FastAPI)
-│   └── server.py         # FastAPI 主服务入口
+│   ├── server.py         # FastAPI 主服务入口
+│   ├── task_processor.py # 异步任务处理
+│   └── progress_store.py # Redis 进度存储
 ├── core/                 # 核心业务逻辑
 │   ├── full_pipeline.py  # 完整流程服务
 │   └── highlight.py      # MD 高亮服务
 ├── clients/              # 第三方客户端
 │   └── mineru.py         # MinerU API 客户端
-├── pipelines/            # 处理管道
-│   └── highlight.py      # 高亮 Pipeline
+├── storage/              # 存储插件 (新增)
+│   ├── base.py           # Storage Provider 抽象接口
+│   ├── local.py          # 本地文件系统实现
+│   ├── minio_provider.py # MinIO 对象存储实现
+│   ├── factory.py        # Provider 工厂
+│   └── workspace.py      # 工作区管理
 ├── utils/                # 工具模块
 │   └── renderer.py       # Markdown 渲染器
 ├── legacy/               # 待废弃代码 (Celery)
 ├── profiles/             # 配置文件目录
-├── mineru_output/        # MinerU 输出目录
-├── highlight_output/     # 高亮输出目录
-├── start.py              # 服务启动脚本
+├── workspaces/           # 临时工作区 (任务运行时产物，自动清理)
+├── storage/              # 持久化存储 (Local Provider 根目录)
 ├── requirements.txt      # Python 依赖
 ├── .env                  # 环境变量配置
 └── README.md             # 本文件
@@ -82,17 +108,64 @@ services/
 
 | 模块 | 功能描述 |
 |------|----------|
-| `api/server.py` | FastAPI Web 服务，提供 RESTful API 和 WebSocket |
+| `api/server.py` | FastAPI Web 服务，提供 RESTful API、WebSocket、Artifacts API |
+| `api/task_processor.py` | 异步 PDF 处理任务，集成 Workspace + Storage 上传 + 清理 |
 | `core/full_pipeline.py` | 完整流程服务，整合 MinerU + LangExtract + 渲染 |
 | `core/highlight.py` | Markdown 高亮服务，LangExtract 集成与配置管理 |
 | `clients/mineru.py` | MinerU API 客户端，文档解析与结果获取 |
+| `storage/` | 存储插件架构：Provider 抽象、Local/MinIO 实现、工作区管理 |
 | `utils/renderer.py` | Markdown 渲染器，将高亮结果转为 PDF |
 
 ## 数据流
 
 ```
 PDF URL → MinerU API → Markdown → LangExtract → 高亮渲染 → PDF
+                                                      │
+                                                      ▼
+                                        Workspace: workspaces/{task_id}/
+                                        • mineru/      (MinerU 解压产物)
+                                        • highlight/   (PDF + debug 产物)
+                                                      │
+                                                      ▼
+                                        Storage Provider 持久化
+                                        • tasks/{task_id}/mineru/extracted/...
+                                        • tasks/{task_id}/langextract/...
+                                        • tasks/{task_id}/highlight/...
+                                                      │
+                                                      ▼
+                                              自动清理 Workspace
 ```
+
+## 存储架构
+
+### Storage Provider 插件
+
+支持两种后端，通过 `STORAGE_PROVIDER` 环境变量切换：
+
+- **LocalProvider** (`local`)：开发环境默认，产物存入本地 `storage/` 目录
+- **MinioProvider** (`minio`)：生产环境，产物存入 MinIO 对象存储桶
+
+### Workspace 机制
+
+- 任务运行时，MinerU 和 Highlight 的中间产物写入 `workspaces/{task_id}/`
+- 任务完成后，`_persist_task_artifacts()` 将产物上传至 Storage Provider
+- 上传成功后，根据 `CLEAN_WORKSPACE_AFTER_UPLOAD` 自动清理本地工作区
+- 下载接口优先检查本地文件，缺失时回退到 Storage Provider 读取
+
+### Artifacts API
+
+```bash
+# LangExtract HTML 可视化
+GET /api/v1/tasks/{task_id}/artifacts/langextract_html
+
+# 结构化提取结果 (JSONL)
+GET /api/v1/tasks/{task_id}/artifacts/entities
+
+# 高亮 PDF
+GET /api/v1/tasks/{task_id}/artifacts/highlight_pdf
+```
+
+> Redis result 中不再存储 `langextract_html` 和 `entities`，前端通过 Artifacts API 按需拉取。
 
 ## 配置文件
 
@@ -153,6 +226,20 @@ ws.onmessage = (event) => {
   console.log('进度更新:', data);
 };
 ```
+
+### 查询任务状态
+
+```bash
+GET /api/v1/tasks/{task_id}
+```
+
+### 下载结果
+
+```bash
+GET /api/v1/tasks/{task_id}/download
+```
+
+> 下载接口优先使用本地文件，若本地文件不存在（如 Workspace 已清理），自动回退到 Storage Provider 读取。
 
 ## 依赖说明
 

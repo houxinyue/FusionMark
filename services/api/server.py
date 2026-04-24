@@ -29,7 +29,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -276,12 +276,16 @@ async def get_task_status(task_id: str):
         "highlight": task.get("highlight", {"state": "pending", "progress": 0})
     }
     
+    result = task.get("result")
+    if not isinstance(result, dict):
+        result = None
+    
     return TaskStatusResponse(
         task_id=task_id,
         status=task["status"],
         progress=progress,
         message=task.get("message"),
-        result=task.get("result")
+        result=result
     )
 
 
@@ -321,14 +325,125 @@ async def download_result(task_id: str):
             output_path = result.get("output_path")
         except:
             output_path = None
-    
-    if not output_path or not Path(output_path).exists():
-        raise HTTPException(status_code=404, detail="结果文件不存在")
-    
-    return FileResponse(
-        path=output_path,
-        filename=Path(output_path).name,
-        media_type="application/pdf"
+
+    # 优先本地文件
+    if output_path and Path(output_path).exists():
+        return FileResponse(
+            path=output_path,
+            filename=Path(output_path).name,
+            media_type="application/pdf"
+        )
+
+    # 本地缺失时回退到 storage provider
+    objects = result.get("objects", {}) if isinstance(result, dict) else {}
+    highlight_obj = objects.get("highlight_pdf") if isinstance(objects, dict) else None
+
+    if highlight_obj and isinstance(highlight_obj, dict) and highlight_obj.get("key"):
+        try:
+            from services.storage import get_storage_provider
+            provider = get_storage_provider()
+            key = highlight_obj["key"]
+            data = provider.read_bytes(key)
+            if data:
+                from io import BytesIO
+                filename = highlight_obj.get("key", "").split("/")[-1] or "result.pdf"
+                return StreamingResponse(
+                    BytesIO(data),
+                    media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+                )
+        except Exception as e:
+            print(f"[!] 从 storage provider 读取结果失败: {e}")
+
+    raise HTTPException(status_code=404, detail="结果文件不存在")
+
+
+@app.get("/api/v1/tasks/{task_id}/artifacts/{artifact_type}")
+async def get_task_artifact(task_id: str, artifact_type: str):
+    """
+    从 Storage Provider 按需读取任务产物
+
+    支持的 artifact_type:
+        - langextract_html: LangExtract HTML 可视化
+        - entities: 结构化提取结果 (JSONL)
+        - highlight_pdf: 高亮 PDF
+
+    产物不再全部存入 Redis，减轻 Redis payload，前端按需要拉取。
+    """
+    store = get_task_store()
+    task = store.get_task(task_id)
+
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if task["status"] != "completed":
+        raise HTTPException(status_code=400, detail="任务尚未完成")
+
+    result = task.get("result", {})
+    if not isinstance(result, dict):
+        try:
+            result = json.loads(result) if isinstance(result, str) else {}
+        except:
+            result = {}
+
+    objects = result.get("objects", {})
+    if not isinstance(objects, dict):
+        raise HTTPException(status_code=404, detail="任务产物未找到")
+
+    from services.storage import get_storage_provider
+    provider = get_storage_provider()
+
+    key: Optional[str] = None
+    content_type: str = "application/octet-stream"
+    filename: str = "artifact"
+
+    # 根据 artifact_type 定位 storage key
+    if artifact_type == "langextract_html":
+        langextract = objects.get("langextract")
+        if langextract and isinstance(langextract, dict):
+            for obj in langextract.get("objects", []):
+                if isinstance(obj, dict) and obj.get("key", "").endswith(".html"):
+                    key = obj["key"]
+                    content_type = "text/html"
+                    filename = key.split("/")[-1] or "langextract.html"
+                    break
+        if not key:
+            raise HTTPException(status_code=404, detail="LangExtract HTML 产物未找到")
+
+    elif artifact_type == "entities":
+        langextract = objects.get("langextract")
+        if langextract and isinstance(langextract, dict):
+            for obj in langextract.get("objects", []):
+                if isinstance(obj, dict) and obj.get("key", "").endswith(".jsonl"):
+                    key = obj["key"]
+                    content_type = "application/json"  # 前端按 JSON 数组处理，实际为 JSONL
+                    filename = key.split("/")[-1] or "extractions.jsonl"
+                    break
+        if not key:
+            raise HTTPException(status_code=404, detail="Entities 产物未找到")
+
+    elif artifact_type == "highlight_pdf":
+        highlight_obj = objects.get("highlight_pdf")
+        if highlight_obj and isinstance(highlight_obj, dict) and highlight_obj.get("key"):
+            key = highlight_obj["key"]
+            content_type = "application/pdf"
+            filename = key.split("/")[-1] or "result.pdf"
+        if not key:
+            raise HTTPException(status_code=404, detail="Highlight PDF 未找到")
+
+    else:
+        raise HTTPException(status_code=400, detail=f"不支持的产物类型: {artifact_type}")
+
+    # 从 storage provider 读取内容
+    data = provider.read_bytes(key)
+    if data is None:
+        raise HTTPException(status_code=404, detail="产物内容读取失败")
+
+    from io import BytesIO
+    return StreamingResponse(
+        BytesIO(data),
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
     )
 
 

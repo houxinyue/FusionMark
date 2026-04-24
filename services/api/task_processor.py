@@ -13,7 +13,7 @@ import os
 import json
 import asyncio
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 
@@ -71,6 +71,81 @@ def get_highlight_service(config):
     return MDHighlightService(config.highlight_config)
 
 
+def _should_store(kind: str) -> bool:
+    """根据环境变量判断是否持久化指定类型的产物"""
+    env_map = {
+        "mineru": "STORE_MINERU_EXTRACTED",
+        "langextract": "STORE_LANGEXTRACT_ARTIFACTS",
+        "langextract_verbose": "STORE_LANGEXTRACT_VERBOSE_ARTIFACTS",
+        "highlight": "STORE_HIGHLIGHT_ARTIFACTS",
+    }
+    env_var = env_map.get(kind, "")
+    if not env_var:
+        return False
+    return os.getenv(env_var, "true" if kind != "langextract_verbose" else "false").lower() in ("true", "1", "yes")
+
+
+def _persist_task_artifacts(
+    task_id: str,
+    mineru_result,
+    extraction_result,
+    config
+) -> Dict[str, Any]:
+    """
+    将任务产物从工作区持久化到 Storage Provider
+
+    Returns:
+        objects 字典: {artifact_name: {key, url, size}}
+    """
+    try:
+        from ..storage import get_storage_provider
+    except ImportError:
+        from services.storage import get_storage_provider
+
+    provider = get_storage_provider()
+    objects: Dict[str, Any] = {}
+
+    # 1. MinerU extracted 目录（不存 zip）
+    if _should_store("mineru") and mineru_result and mineru_result.extract_dir:
+        extract_dir = Path(mineru_result.extract_dir)
+        if extract_dir.exists() and extract_dir.is_dir():
+            prefix = f"tasks/{task_id}/mineru/extracted"
+            saved = provider.save_directory(prefix, str(extract_dir))
+            if saved:
+                objects["mineru_extracted"] = {
+                    "prefix": prefix,
+                    "count": len(saved),
+                    "objects": [{"key": o.key, "size": o.size, "url": o.url} for o in saved]
+                }
+
+    # 2. LangExtract 产物（JSONL + HTML 等）
+    if _should_store("langextract") and config and config.final_output_dir:
+        debug_dir = Path(config.final_output_dir) / "debug"
+        if debug_dir.exists() and debug_dir.is_dir():
+            prefix = f"tasks/{task_id}/langextract"
+            saved = provider.save_directory(prefix, str(debug_dir))
+            if saved:
+                objects["langextract"] = {
+                    "prefix": prefix,
+                    "count": len(saved),
+                    "objects": [{"key": o.key, "size": o.size, "url": o.url} for o in saved]
+                }
+
+    # 3. Highlight PDF
+    if _should_store("highlight") and extraction_result and extraction_result.output_path:
+        output_path = Path(extraction_result.output_path)
+        if output_path.exists() and output_path.is_file():
+            key = f"tasks/{task_id}/highlight/{output_path.name}"
+            obj = provider.save_file(key, str(output_path))
+            objects["highlight_pdf"] = {
+                "key": obj.key,
+                "size": obj.size,
+                "url": obj.url
+            }
+
+    return objects
+
+
 async def process_pdf_task_async(
     task_id: str,
     document_url: str,
@@ -107,6 +182,8 @@ async def process_pdf_task_async(
         status: str = "processing"
     ):
         """同步更新进度（供回调使用）"""
+        initial_progress = 5
+
         # 计算总体进度
         stage_weights = {
             "pending": 0,
@@ -128,7 +205,11 @@ async def process_pdf_task_async(
             current_weight = stage_weights.get(stage, 0)
             current_progress = stage_progress / 100
             overall_progress = int(completed_weight + current_weight * current_progress)
-        
+
+            # 任务创建后初始进度为 5%，避免进入首个阶段时出现“先增长再回到 0”。
+            if stage in {"mineru", "extraction", "highlight"}:
+                overall_progress = max(initial_progress, overall_progress)
+
         store.update_progress(
             task_id=task_id,
             stage=stage,
@@ -185,6 +266,18 @@ async def process_pdf_task_async(
         if not config.mineru_api_key:
             mark_failed("MinerU API Key 未配置")
             return
+        
+        # ========== 设置任务级工作区 ==========
+        try:
+            from ..storage.workspace import get_mineru_workspace, get_highlight_workspace, cleanup_workspace, should_cleanup_workspace
+        except ImportError:
+            from services.storage.workspace import get_mineru_workspace, get_highlight_workspace, cleanup_workspace, should_cleanup_workspace
+        
+        mineru_ws = get_mineru_workspace(task_id)
+        highlight_ws = get_highlight_workspace(task_id)
+        config.mineru_output_dir = str(mineru_ws)
+        config.final_output_dir = str(highlight_ws)
+        print(f"[{task_id}] 工作区: mineru={mineru_ws}, highlight={highlight_ws}")
         
         mineru_client = get_mineru_client(config)
         
@@ -304,11 +397,11 @@ async def process_pdf_task_async(
         # ⭐ 关键：阻塞前先发状态通知
         await update_stage(
             "extraction", 10,
-            "调用大模型分析文档（约需1-3分钟，请耐心等待）...",
+            "调用大模型分析文档(约需1-3分钟,请耐心等待)...",
             extraction_data={
                 "state": "running",
                 "progress": 10,
-                "logs": ["正在调用大模型...", "分析文档内容（此步骤耗时较长，请耐心等待）..."]
+                "logs": ["正在调用大模型...", "分析文档内容(此步骤耗时较长,请耐心等待)..."]
             }
         )
         
@@ -339,6 +432,8 @@ async def process_pdf_task_async(
         extraction_count = extraction_result.extraction_count
         highlight_count = extraction_result.highlight_count
         category_counts = extraction_result.details.get("category_counts", {})
+        entities = extraction_result.details.get("entities", [])
+        langextract_html = extraction_result.details.get("langextract_html")
         
         await update_stage(
             "extraction", 100,
@@ -378,7 +473,25 @@ async def process_pdf_task_async(
             )
             await asyncio.sleep(0.1)
         
+        # ========== 持久化产物 ==========
+        objects = _persist_task_artifacts(
+            task_id=task_id,
+            mineru_result=mineru_result,
+            extraction_result=extraction_result,
+            config=config
+        )
+        
+        # ========== 清理工作区（根据配置） ==========
+        if should_cleanup_workspace():
+            cleanup_ok = cleanup_workspace(task_id)
+            if cleanup_ok:
+                print(f"[{task_id}] 工作区已清理")
+            else:
+                print(f"[{task_id}] 工作区清理失败（非致命）")
+        
         # ========== 完成 ==========
+        # 注：langextract_html 和 entities 不再存入 Redis，减轻 payload
+        # 前端通过 GET /api/v1/tasks/{task_id}/artifacts/{type} 从 Storage 按需获取
         result_data = {
             "task_id": task_id,
             "mineru_task_id": mineru_result.task_id,
@@ -386,7 +499,8 @@ async def process_pdf_task_async(
             "md_length": len(mineru_result.content),
             "extraction_count": extraction_count,
             "highlight_count": highlight_count,
-            "category_counts": category_counts
+            "category_counts": category_counts,
+            "objects": objects
         }
         
         await update_stage(

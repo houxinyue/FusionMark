@@ -152,6 +152,8 @@ cython_debug/
 .claude/
 **/mineru_output/
 **/highlight_output/
+**/local_storage/
+**/workspaces/
 AGENTS_SOUL.md
 
 # Dolt internals and local server configs

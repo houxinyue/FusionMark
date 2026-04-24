@@ -14,6 +14,8 @@ mineru_max_retries: 60
 # === 高亮渲染配置 ===
 
 highlight_config:
+  # 20260424 增加使用dom_track方案
+  renderer: "dom_tracking"
   # 提取提示词模板
   extraction_prompt: |
     从智能手机市场报告的HTML表格中提取以下信息。

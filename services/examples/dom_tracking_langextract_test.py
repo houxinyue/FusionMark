@@ -33,9 +33,12 @@ from langextract.data import Extraction, ExampleData
 from langextract.factory import ModelConfig
 from langextract.providers.openai import OpenAILanguageModel 
 from langextract import visualize
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 import markdown
 import yaml
+
+# 从生产代码导入 DOM-Tracking 相关类
+from services.utils.renderer import HighlightEntity, DOMTracker, DOMTrackingRenderer
 
 # 加载环境变量
 _ENV_PATH = Path(__file__).parent.parent / ".env"
@@ -43,222 +46,6 @@ if _ENV_PATH.exists():
     load_dotenv(_ENV_PATH)
 else:
     load_dotenv()
-
-
-@dataclass
-class HighlightEntity:
-    """高亮实体"""
-    text: str
-    category: str
-    color: Optional[str] = None
-    char_start: Optional[int] = None
-    char_end: Optional[int] = None
-    alignment_status: Optional[str] = None
-
-
-@dataclass
-class TextNodeMapping:
-    """文本节点映射"""
-    node_id: str
-    start: int
-    end: int
-    tag_name: str
-
-
-class DOMTracker:
-    """DOM 追踪映射器 - Markdown → HTML → 纯文本"""
-    
-    def __init__(self, md_content: str):
-        self.md_content = md_content
-        self.html_content = None
-        self.soup = None
-        self.plain_text = ""
-        self.node_mappings: List[TextNodeMapping] = []
-        self._build_mapping()
-    
-    def _build_mapping(self):
-        """构建映射"""
-        self.html_content = markdown.markdown(
-            self.md_content,
-            extensions=['extra', 'tables', 'admonition', 'fenced_code']
-        )
-        self.soup = BeautifulSoup(self.html_content, 'html.parser')
-        
-        text_bearing_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
-                            'li', 'td', 'th', 'blockquote']
-        
-        current_offset = 0
-        node_counter = 0
-        
-        for tag in self.soup.find_all(text_bearing_tags):
-            if tag.find_parent(text_bearing_tags) and tag.name != 'td':
-                continue
-            
-            text_content = tag.get_text(separator="", strip=False)
-            text_len = len(text_content)
-            
-            if text_len == 0:
-                continue
-            
-            node_id = f"node_{node_counter}"
-            tag['data-node-id'] = node_id
-            
-            self.node_mappings.append(TextNodeMapping(
-                node_id=node_id,
-                start=current_offset,
-                end=current_offset + text_len,
-                tag_name=tag.name
-            ))
-            
-            self.plain_text += text_content + "\n"
-            current_offset += text_len + 1
-            node_counter += 1
-    
-    def get_plain_text(self) -> str:
-        return self.plain_text
-    
-    def find_node_by_position(self, char_start: int, char_end: int) -> Optional[TextNodeMapping]:
-        for mapping in self.node_mappings:
-            if mapping.start <= char_start and char_end <= mapping.end:
-                return mapping
-        return None
-    
-    def get_node_relative_position(self, mapping: TextNodeMapping, 
-                                   char_start: int, char_end: int) -> Tuple[int, int]:
-        return char_start - mapping.start, char_end - mapping.start
-
-
-class DOMTrackingHighlighter:
-    """DOM-Tracking 高亮器"""
-    
-    DEFAULT_COLORS = {
-        "report_title": "#e67e22",
-        "company_name": "#2ecc71",
-        "shipment_value": "#3498db",
-        "market_share": "#9b59b6",
-        "yoy_change": "#e84393",
-        "negative_change": "#e74c3c",
-        "data_source": "#95a5a6",
-        "default": "#ffeb3b",
-    }
-    
-    def __init__(self, colors: Optional[Dict[str, str]] = None):
-        self.colors = {**self.DEFAULT_COLORS, **(colors or {})}
-    
-    def highlight(self, tracker: DOMTracker, entities: List[HighlightEntity]) -> Tuple[str, dict]:
-        """执行高亮，返回 HTML 和统计信息"""
-        soup = tracker.soup
-        
-        # 按位置倒序处理
-        positioned = [e for e in entities if e.char_start is not None and e.char_end is not None]
-        positioned.sort(key=lambda e: e.char_start, reverse=True)
-        
-        stats = {"success": 0, "fail": 0, "cross_node": 0, "no_position": 0}
-        
-        for entity in positioned:
-            mapping = tracker.find_node_by_position(entity.char_start, entity.char_end)
-            
-            if not mapping:
-                stats["cross_node"] += 1
-                stats["fail"] += 1
-                continue
-            
-            rel_start, rel_end = tracker.get_node_relative_position(
-                mapping, entity.char_start, entity.char_end
-            )
-            
-            target_tag = soup.find(attrs={"data-node-id": mapping.node_id})
-            if not target_tag:
-                stats["fail"] += 1
-                continue
-            
-            if self._insert_mark(target_tag, rel_start, rel_end, entity):
-                stats["success"] += 1
-            else:
-                stats["fail"] += 1
-        
-        # 统计没有位置信息的实体
-        no_pos = [e for e in entities if e.char_start is None or e.char_end is None]
-        stats["no_position"] = len(no_pos)
-        
-        # 清理临时属性
-        for tag in soup.find_all(attrs={"data-node-id": True}):
-            del tag['data-node-id']
-        
-        return str(soup), stats
-    
-    def _insert_mark(self, tag, rel_start: int, rel_end: int, entity: HighlightEntity) -> bool:
-        """在节点内插入 mark 标签"""
-        node_text = tag.get_text(separator="", strip=False)
-        
-        if rel_start < 0 or rel_end > len(node_text) or rel_start >= rel_end:
-            return False
-        
-        target_text = node_text[rel_start:rel_end]
-        
-        # 验证文本一致性
-        if target_text.strip() != entity.text.strip():
-            print(f"  ⚠️ 文本不匹配: 期望 '{entity.text}', 实际 '{target_text}'")
-        
-        color = self.colors.get(entity.category, self.colors["default"])
-        soup = BeautifulSoup("", "html.parser")
-        mark_tag = soup.new_tag("mark", 
-                               attrs={"class": f"highlight-{entity.category}",
-                                      "style": f"background-color: {color}; padding: 2px 4px; border-radius: 2px;"})
-        mark_tag.string = target_text
-        
-        # 简单情况：单文本子节点
-        if len(tag.contents) == 1 and isinstance(tag.contents[0], NavigableString):
-            original = str(tag.contents[0])
-            new_contents = []
-            
-            if rel_start > 0:
-                new_contents.append(NavigableString(original[:rel_start]))
-            new_contents.append(mark_tag)
-            if rel_end < len(original):
-                new_contents.append(NavigableString(original[rel_end:]))
-            
-            tag.clear()
-            for content in new_contents:
-                tag.append(content)
-            return True
-        
-        # 复杂情况
-        return self._handle_complex_node(tag, rel_start, rel_end, mark_tag)
-    
-    def _handle_complex_node(self, tag, rel_start: int, rel_end: int, mark_tag) -> bool:
-        """处理复杂节点（含内联标签）"""
-        text_fragments = []
-        current_pos = 0
-        
-        for text_node in tag.find_all(string=True, recursive=True):
-            if text_node.parent is tag or text_node.parent.name in ['strong', 'em', 'b', 'i', 'span']:
-                text_len = len(str(text_node))
-                text_fragments.append({
-                    'node': text_node,
-                    'start': current_pos,
-                    'end': current_pos + text_len
-                })
-                current_pos += text_len
-        
-        target_frag = None
-        for frag in text_fragments:
-            if frag['start'] <= rel_start < frag['end']:
-                target_frag = frag
-                break
-        
-        if not target_frag:
-            return False
-        
-        text_node = target_frag['node']
-        text = str(text_node)
-        frag_start = target_frag['start']
-        local_start = rel_start - frag_start
-        local_end = rel_end - frag_start
-        
-        new_html = f"{text[:local_start]}{str(mark_tag)}{text[local_end:]}"
-        text_node.replace_with(BeautifulSoup(new_html, 'html.parser'))
-        return True
 
 
 def load_config_from_yaml(config_path: str) -> dict:
@@ -359,7 +146,7 @@ def parse_colors_from_config(config: dict) -> Dict[str, str]:
 
 
 def run_langextract(plain_text: str, prompt: str, examples: List[ExampleData], 
-                    model_config: ModelConfig) -> lx.ExtractionResult:
+                    model_config: ModelConfig) -> lx.data.AnnotatedDocument:
     """调用 LangExtract，返回完整结果对象（用于后续 JSON/HTML 导出）"""
     result = lx.extract(
         examples=examples,
@@ -400,21 +187,24 @@ def convert_to_entities(extractions: List[Extraction], colors: Dict[str, str]) -
     return entities
 
 
-def export_extraction_json(result: lx.ExtractionResult, output_path: str):
-    """导出 LangExtract 原始结果为 JSON"""
+def export_extraction_jsonl(result: lx.data.AnnotatedDocument, output_dir: str, output_name: str = "extractions"):
+    """导出 LangExtract 原始结果为 JSONL"""
     try:
-        data = result.model_dump() if hasattr(result, "model_dump") else result.dict()
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        print(f"  ✅ JSON 已导出: {output_path}")
+        output_file_name = output_name if output_name.endswith(".jsonl") else f"{output_name}.jsonl"
+        lx.io.save_annotated_documents(
+            annotated_documents=iter([result]),
+            output_name=output_file_name,
+            output_dir=output_dir
+        )
+        print(f"  ✅ JSONL 已导出: {Path(output_dir) / output_file_name}")
     except Exception as e:
-        print(f"  ❌ JSON 导出失败: {e}")
+        print(f"  ❌ JSONL 导出失败: {e}")
 
 
-def export_langextract_html(result: lx.ExtractionResult, output_path: str, colors: Dict[str, str]):
+def export_langextract_html(result: lx.data.AnnotatedDocument, output_path: str):
     """使用 LangExtract 内置 visualize 生成官方 HTML 可视化"""
     try:
-        html = visualize(results=result, highlight_colors=colors)
+        html = visualize(result)
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(html)
         print(f"  ✅ LangExtract HTML 可视化已导出: {output_path}")
@@ -565,10 +355,12 @@ def main():
     
     # Step 3: 导出原始结果（JSON + LangExtract HTML）
     if args.output_json:
-        export_extraction_json(lx_result, args.output_json)
+        output_dir = str(Path(args.output_json).parent) if Path(args.output_json).parent.exists() else "."
+        output_name = Path(args.output_json).stem
+        export_extraction_jsonl(lx_result, output_dir, output_name)
     
     if args.output_lx_html:
-        export_langextract_html(lx_result, args.output_lx_html, colors)
+        export_langextract_html(lx_result, args.output_lx_html)
     
     # Step 4: 转换为实体并打印
     entities = convert_to_entities(extractions, colors)
@@ -579,8 +371,8 @@ def main():
     print("Step 4: DOM-Tracking 高亮")
     print("-" * 70)
     
-    highlighter = DOMTrackingHighlighter(colors)
-    highlighted_html, stats = highlighter.highlight(tracker, entities)
+    renderer = DOMTrackingRenderer(colors=colors)
+    highlighted_html, _, stats = renderer.highlight(tracker, entities)
     
     print(f"  高亮统计:")
     print(f"    成功: {stats['success']}")
