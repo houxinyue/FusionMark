@@ -1,0 +1,212 @@
+可以，具体实现思路如下：
+
+## 1. 不改业务，先改视觉层
+
+你现在的 `index.html + app.js` 可以基本不动，优先改 `main.css`。
+
+改造重点是：
+
+```txt
+页面结构不变
+业务逻辑不变
+CSS 变量升级
+卡片样式升级
+按钮样式升级
+背景氛围升级
+状态色统一
+```
+
+---
+
+## 2. 先定义 Design Token
+
+在 `:root` 里统一定义颜色、圆角、阴影、渐变：
+
+```css
+:root {
+  --color-bg: #050814;
+  --color-surface: rgba(18, 27, 52, 0.72);
+  --color-surface-strong: rgba(24, 36, 70, 0.9);
+
+  --color-blue: #002fff;
+  --color-blue-light: #21c8f6;
+  --color-orange: #ff6a00;
+  --color-orange-light: #ff9a3d;
+
+  --text-main: #f8fbff;
+  --text-sub: rgba(248, 251, 255, 0.68);
+  --text-muted: rgba(248, 251, 255, 0.42);
+
+  --border-glass: rgba(255, 255, 255, 0.08);
+
+  --glow-blue: 0 0 24px rgba(0, 47, 255, 0.45);
+  --glow-orange: 0 0 24px rgba(255, 106, 0, 0.45);
+
+  --radius-card: 18px;
+  --radius-control: 10px;
+}
+```
+
+---
+
+## 3. 背景做“宇宙科技感”
+
+给 `body` 或 `.app` 加多层径向渐变：
+
+```css
+body {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(0, 47, 255, 0.28), transparent 32%),
+    radial-gradient(circle at 82% 16%, rgba(255, 106, 0, 0.14), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(33, 200, 246, 0.12), transparent 40%),
+    #050814;
+}
+```
+
+可以再加一个 `::before` 做星点噪声或网格线。
+
+---
+
+## 4. 卡片统一毛玻璃
+
+把 `.panel`、`.progress-card`、`.entities-preview`、`.entity-modal-dialog` 统一成玻璃卡片：
+
+```css
+.panel,
+.progress-card,
+.entities-preview,
+.entity-modal-dialog {
+  background: linear-gradient(
+    180deg,
+    rgba(24, 36, 70, 0.82),
+    rgba(10, 14, 25, 0.76)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  backdrop-filter: blur(22px);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+```
+
+---
+
+## 5. 按钮分清主次
+
+蓝色用于“开始处理”，橙色用于“下载结果 / 强操作”。
+
+```css
+.btn-primary {
+  background: linear-gradient(135deg, #002fff, #21c8f6);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(0, 47, 255, 0.45);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px rgba(33, 200, 246, 0.6);
+}
+
+.btn-download,
+.btn-accent {
+  background: linear-gradient(135deg, #ff6a00, #ff9a3d);
+  box-shadow: 0 0 24px rgba(255, 106, 0, 0.45);
+}
+```
+
+---
+
+## 6. 上传区做 AI 扫描框
+
+上传区是首页视觉重点，可以做成“扫描仪/目标检测框”：
+
+```css
+.upload-area {
+  position: relative;
+  border: 1px dashed rgba(33, 200, 246, 0.35);
+  background: rgba(0, 47, 255, 0.06);
+  box-shadow: inset 0 0 30px rgba(0, 47, 255, 0.12);
+}
+
+.upload-area::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 106, 0, 0.28);
+  pointer-events: none;
+}
+```
+
+---
+
+## 7. 进度条改成蓝橙能量条
+
+```css
+.progress-fill {
+  background: linear-gradient(90deg, #002fff, #21c8f6, #ff6a00);
+  box-shadow: 0 0 18px rgba(33, 200, 246, 0.55);
+}
+
+.stage-item.active {
+  border-color: rgba(33, 200, 246, 0.45);
+  background: rgba(0, 47, 255, 0.12);
+}
+
+.stage-item.completed {
+  border-color: rgba(255, 106, 0, 0.35);
+}
+```
+
+---
+
+## 8. PDF 预览区增强层次
+
+右侧预览区可以更像 SaaS 工作台：
+
+```css
+.preview-toolbar {
+  background: rgba(10, 14, 25, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.preview-container {
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+    radial-gradient(circle at 50% 40%, rgba(0, 47, 255, 0.12), transparent 36%),
+    #050814;
+  background-size: 32px 32px, 32px 32px, auto, auto;
+}
+```
+
+---
+
+## 9. 实体标签统一语义颜色
+
+实体标签继续保留莫兰迪色，但可以加一点科技描边：
+
+```css
+.entity-tag {
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 0 12px rgba(255,255,255,0.08);
+}
+```
+
+---
+
+## 10. 推荐落地顺序
+
+```txt
+第一步：替换 CSS 变量
+第二步：改 body / app 背景
+第三步：统一 panel / card
+第四步：改按钮
+第五步：改上传区
+第六步：改进度卡片
+第七步：改 PDF 预览区
+第八步：补 hover / glow / 动效
+```
+
+

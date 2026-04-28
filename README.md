@@ -364,7 +364,31 @@ FusionMark 提供精美的 Web 界面，采用**克莱因蓝 + 爱马仕橙**的
 
 ### 启动前端
 
-前端为纯静态页面，可直接在浏览器中打开 `frontend/index.html`，或通过 FastAPI 的静态文件服务访问。
+本项目提供两套前端：
+
+- **`web-pc/`** — 生产级 Vue 3 工程（推荐用于开发和新功能迭代）
+- **`frontend/`** — 原生 HTML/CSS/JS 早期原型（保留参考）
+
+#### 启动新版前端（web-pc）
+
+```bash
+cd web-pc
+pnpm install
+pnpm dev
+```
+
+前端将运行在 `http://localhost:5173`，Vite 会自动代理 API 请求到 `http://localhost:8000`。
+
+#### 构建生产包
+
+```bash
+cd web-pc
+pnpm build
+```
+
+构建产物输出到 `web-pc/dist/`，可通过 Nginx 或 FastAPI 静态文件服务部署。
+
+详细说明参见 [web-pc/README.md](web-pc/README.md)
 
 ---
 
@@ -390,7 +414,8 @@ fusion-mark/
 │   ├── requirements.txt  # Python 依赖
 │   ├── .env              # 环境变量配置
 │   └── README.md         # 服务层说明
-├── frontend/             # 前端界面
+├── web-pc/               # 新版前端 (Vue 3 + Vite + TS)
+├── frontend/             # 旧版前端 (原生 HTML/CSS/JS)
 └── docs/                 # 文档
 ```
 
@@ -496,13 +521,28 @@ HTML(string=full_html).write_pdf(output_path, stylesheets=[CSS(string=css_style)
 
 ```
 fusion-mark/
-├── 📁 frontend/              # 前端界面
-│   ├── index.html           # 主页面
+├── 📁 web-pc/                # ⭐ 新版前端 (Vue 3 + Vite + TypeScript)
 │   ├── src/
-│   │   ├── app.js           # 前端逻辑
-│   │   ├── styles/          # CSS 样式
-│   │   └── components/      # UI 组件
-│   └── dist/                # 构建输出
+│   │   ├── api/             # Axios 接口层
+│   │   ├── components/      # Vue 业务组件
+│   │   ├── composables/     # 组合式逻辑
+│   │   ├── router/          # Vue Router
+│   │   ├── stores/          # Pinia 状态管理
+│   │   ├── styles/          # 全局样式
+│   │   ├── types/           # TypeScript 类型
+│   │   ├── views/           # 页面级组件
+│   │   ├── App.vue          # 根组件
+│   │   └── main.ts          # 应用入口
+│   ├── index.html           # HTML 模板
+│   ├── vite.config.ts       # Vite 配置
+│   ├── package.json         # 依赖
+│   └── README.md            # 前端工程说明
+│
+├── 📁 frontend/              # 旧版前端 (原生 HTML/CSS/JS，保留参考)
+│   ├── index.html
+│   └── src/
+│       ├── app.js
+│       └── styles/
 │
 ├── 📁 services/              # ⭐ 后端服务代码 (独立 Python 项目)
 │   ├── api/                  # API 层 (FastAPI)
@@ -521,7 +561,8 @@ fusion-mark/
 │   ├── .env                  # 环境变量配置
 │   └── README.md             # 服务层说明
 │
-├── 📁 frontend/              # 前端界面
+├── 📁 web-pc/                # 新版前端 (Vue 3 + Vite + TS)
+├── 📁 frontend/              # 旧版前端 (原生 HTML/CSS/JS)
 ├── 📁 docs/                  # 文档
 ├── 📄 LICENSE
 ├── 📄 .gitignore
