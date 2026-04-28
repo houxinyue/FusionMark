@@ -24,45 +24,114 @@
       <div class="skeleton skeleton-block pdf-skeleton-line" style="width: 70%;" />
     </div>
 
-    <canvas v-else ref="canvasRef" class="pdf-canvas"></canvas>
+    <div v-else-if="loadError" class="pdf-error">
+      <p>高亮 PDF 预览加载失败</p>
+      <span>{{ loadError }}</span>
+    </div>
+
+    <canvas v-show="props.url && !isLoading && !loadError" ref="canvasRef" class="pdf-canvas"></canvas>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { usePdfViewer } from '@/composables/usePdfViewer'
 
 const props = defineProps<{
   url?: string
 }>()
 
+const emit = defineEmits<{
+  stateChange: [state: { currentPage: number; totalPages: number; zoomLevel: number; loading: boolean }]
+}>()
+
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const isLoading = ref(false)
-const { loadPdf, renderPage, destroy } = usePdfViewer()
+const loadError = ref('')
+const {
+  currentPage,
+  totalPages,
+  zoomLevel,
+  loadPdf,
+  renderPage,
+  nextPage,
+  prevPage,
+  zoomIn,
+  zoomOut,
+  destroy,
+} = usePdfViewer()
+
+function emitState() {
+  emit('stateChange', {
+    currentPage: currentPage.value,
+    totalPages: totalPages.value,
+    zoomLevel: zoomLevel.value,
+    loading: isLoading.value,
+  })
+}
+
+async function renderCurrentPage() {
+  if (!canvasRef.value) return
+  await renderPage(canvasRef.value)
+  emitState()
+}
+
+async function goPrev() {
+  prevPage()
+  await renderCurrentPage()
+}
+
+async function goNext() {
+  nextPage()
+  await renderCurrentPage()
+}
+
+async function zoomInPage() {
+  zoomIn()
+  await renderCurrentPage()
+}
+
+async function zoomOutPage() {
+  zoomOut()
+  await renderCurrentPage()
+}
 
 watch(
   () => props.url,
   async (newUrl) => {
+    loadError.value = ''
     if (!newUrl) {
       destroy()
       isLoading.value = false
+      emitState()
       return
     }
+
     isLoading.value = true
+    emitState()
     destroy()
+
     try {
       await loadPdf(newUrl)
-      if (canvasRef.value) {
-        await renderPage(canvasRef.value)
-      }
+      await nextTick()
+      await renderCurrentPage()
     } catch (e) {
       console.error('PDF load error:', e)
+      loadError.value = e instanceof Error ? e.message : '未知错误'
     } finally {
       isLoading.value = false
+      emitState()
     }
   },
   { immediate: true },
 )
+
+defineExpose({
+  goPrev,
+  goNext,
+  zoomInPage,
+  zoomOutPage,
+})
 </script>
 
 <style scoped>
@@ -229,6 +298,26 @@ watch(
 .pdf-skeleton-line {
   height: 12px;
   border-radius: var(--radius-sm);
+}
+
+.pdf-error {
+  max-width: 420px;
+  padding: 18px;
+  border: 1px solid rgba(225, 29, 72, 0.22);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 228, 230, 0.62);
+  color: var(--state-danger);
+  text-align: center;
+}
+
+.pdf-error p {
+  margin: 0 0 6px;
+  font-weight: 800;
+}
+
+.pdf-error span {
+  color: var(--text-muted);
+  font-size: var(--font-caption);
 }
 
 @media (max-width: 640px) {

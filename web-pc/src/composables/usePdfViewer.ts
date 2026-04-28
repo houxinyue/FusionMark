@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { markRaw, shallowRef, ref } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -7,14 +7,14 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString()
 
 export function usePdfViewer() {
-  const pdfDocument = ref<any>(null)
+  const pdfDocument = shallowRef<any>(null)
   const currentPage = ref(1)
   const totalPages = ref(0)
   const zoomLevel = ref(1)
 
   async function loadPdf(url: string) {
     const loadingTask = pdfjsLib.getDocument(url)
-    pdfDocument.value = await loadingTask.promise
+    pdfDocument.value = markRaw(await loadingTask.promise)
     totalPages.value = pdfDocument.value.numPages
   }
 

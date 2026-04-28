@@ -11,11 +11,21 @@
 
     <section class="pdf-workspace">
       <PdfToolbar
-        :current-page="1"
-        :total-pages="0"
-        :zoom-level="1"
+        :current-page="pdfState.currentPage"
+        :total-pages="pdfState.totalPages"
+        :zoom-level="pdfState.zoomLevel"
+        :show-download="taskStore.status === 'completed'"
+        @prev="pdfViewerRef?.goPrev()"
+        @next="pdfViewerRef?.goNext()"
+        @zoom-in="pdfViewerRef?.zoomInPage()"
+        @zoom-out="pdfViewerRef?.zoomOutPage()"
+        @download="openDownload"
       />
-      <PdfViewer />
+      <PdfViewer
+        ref="pdfViewerRef"
+        :url="highlightPdfUrl"
+        @state-change="updatePdfState"
+      />
     </section>
 
     <aside class="workbench-rail inspect-rail">
@@ -24,14 +34,32 @@
         <h2>处理状态</h2>
       </div>
       <ProgressCard />
-      <EntityTraceButton />
+      <EntityTraceButton
+        :disabled="taskStore.status !== 'completed'"
+        :loading="entityLoading"
+        :hint="taskStore.status === 'completed' ? '任务已完成，可查看结构化提取产物。' : '任务完成后可查看结构化提取产物。'"
+        @click="openEntityModal"
+      />
     </aside>
 
-    <EntityModal :visible="false" />
+    <EntityModal
+      v-model:visible="entityModalVisible"
+      :loading="entityLoading"
+      :html-content="entityHtml"
+      :entities-download-url="entitiesDownloadUrl"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, reactive, ref } from 'vue'
+import {
+  fetchArtifactText,
+  getEntitiesArtifactUrl,
+  getHighlightPdfArtifactUrl,
+  getLangExtractHtmlUrl,
+  getTaskDownloadUrl,
+} from '@/api/taskApi'
 import { useTaskStore } from '@/stores/taskStore'
 import PdfUpload from '@/components/upload/PdfUpload.vue'
 import UrlSubmit from '@/components/upload/UrlSubmit.vue'
@@ -42,6 +70,56 @@ import PdfViewer from '@/components/pdf/PdfViewer.vue'
 import EntityModal from '@/components/entity/EntityModal.vue'
 
 const taskStore = useTaskStore()
+const pdfViewerRef = ref<InstanceType<typeof PdfViewer> | null>(null)
+const pdfState = reactive({
+  currentPage: 1,
+  totalPages: 0,
+  zoomLevel: 1,
+  loading: false,
+})
+
+function updatePdfState(state: { currentPage: number; totalPages: number; zoomLevel: number; loading: boolean }) {
+  Object.assign(pdfState, state)
+}
+
+const entityModalVisible = ref(false)
+const entityLoading = ref(false)
+const entityHtml = ref('')
+
+const highlightPdfUrl = computed(() => {
+  if (taskStore.status !== 'completed' || !taskStore.currentTaskId) {
+    return ''
+  }
+  return getHighlightPdfArtifactUrl(taskStore.currentTaskId)
+})
+
+const entitiesDownloadUrl = computed(() => {
+  if (taskStore.status !== 'completed' || !taskStore.currentTaskId) {
+    return ''
+  }
+  return getEntitiesArtifactUrl(taskStore.currentTaskId)
+})
+
+function openDownload() {
+  if (!taskStore.currentTaskId) return
+  window.open(getTaskDownloadUrl(taskStore.currentTaskId), '_blank', 'noopener,noreferrer')
+}
+
+async function openEntityModal() {
+  if (taskStore.status !== 'completed' || !taskStore.currentTaskId) return
+
+  entityModalVisible.value = true
+  entityLoading.value = true
+
+  try {
+    entityHtml.value = await fetchArtifactText(getLangExtractHtmlUrl(taskStore.currentTaskId))
+  } catch (e) {
+    console.error('Load entity artifacts failed:', e)
+    entityHtml.value = ''
+  } finally {
+    entityLoading.value = false
+  }
+}
 </script>
 
 <style scoped>

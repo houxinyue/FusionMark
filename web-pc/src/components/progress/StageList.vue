@@ -41,6 +41,7 @@ function stateLabel(state: string) {
     processing: '处理中',
     running: '处理中',
     completed: '已完成',
+    done: '已完成',
     failed: '失败',
   }
   return labels[state] ?? state
@@ -75,7 +76,8 @@ function stateLabel(state: string) {
   background: rgba(249, 115, 22, 0.08);
 }
 
-.stage-item.completed {
+.stage-item.completed,
+.stage-item.done {
   border-color: rgba(34, 197, 94, 0.3);
   background: rgba(34, 197, 94, 0.06);
 }
@@ -116,7 +118,9 @@ function stateLabel(state: string) {
 }
 
 .stage-item.completed .stage-state,
-.stage-item.completed .stage-progress {
+.stage-item.completed .stage-progress,
+.stage-item.done .stage-state,
+.stage-item.done .stage-progress {
   color: var(--state-success);
 }
 

@@ -6,80 +6,88 @@ FusionMark 的 PC 端前端工程，基于 **Vue 3 + Vite + TypeScript + Naive U
 
 | 技术 | 版本 | 作用 |
 |---|---|---|
-| Vue | ^3.5.32 | 渐进式前端框架 |
-| Vite | ^8.0.10 | 构建工具 |
+| Vue | ^3.5.32 | 前端框架 |
+| Vite | ^8.0.10 | 构建与开发服务器 |
 | TypeScript | ~6.0.2 | 类型约束 |
-| Naive UI | ^2.44.1 | UI 组件库（深色主题） |
+| Naive UI | ^2.44.1 | UI 组件库 |
 | Pinia | ^3.0.4 | 全局状态管理 |
 | Vue Router | ^5.0.6 | 前端路由 |
 | Axios | ^1.15.2 | HTTP 请求封装 |
-| pdfjs-dist | ^5.6.205 | PDF 预览渲染 |
-| @vueuse/core | ^14.2.1 | 组合式工具集 |
-| Vitest | ^4.1.5 | 单元测试框架 |
-| ESLint | ^10.2.1 | 代码质量检查 |
-| Prettier | ^3.8.3 | 代码格式化 |
+| pdfjs-dist | ^5.6.205 | PDF 在线预览 |
+
+## 当前功能
+
+- URL 文档任务提交：`POST /api/v1/tasks`
+- WebSocket 实时进度：`WS /ws/{task_id}`
+- 三阶段进度展示：MinerU / LangExtract / Highlight
+- 完成态结果下载：`GET /api/v1/tasks/{task_id}/download`
+- 中间 PDF 区在线预览高亮 PDF：`GET /api/v1/tasks/{task_id}/artifacts/highlight_pdf`
+- 提取结果弹窗：
+  - 下载实体 JSONL：`GET /api/v1/tasks/{task_id}/artifacts/entities`
+  - iframe 嵌入 LangExtract HTML：`GET /api/v1/tasks/{task_id}/artifacts/langextract_html`
+
+暂未完成：
+
+- 本地文件上传到后端任务接口
+- 任务历史页完整联调
+- 配置管理页完整联调
 
 ## 目录结构
 
-```
+```text
 web-pc/
-├─ public/                  # 静态资源
-├─ src/
-│  ├─ api/                  # 后端接口层
-│  │  ├─ http.ts            # Axios 实例与拦截器
-│  │  └─ taskApi.ts         # 任务相关接口
-│  ├─ assets/               # 图片等静态资源
-│  ├─ components/           # 通用业务组件
-│  │  ├─ layout/            # 布局组件（Header / Footer）
-│  │  ├─ upload/            # 上传相关（PdfUpload / UrlSubmit）
-│  │  ├─ progress/          # 进度展示（ProgressCard / StageList / ProgressLogs）
-│  │  ├─ pdf/               # PDF 预览（PdfViewer / PdfToolbar）
-│  │  └─ entity/            # 实体回溯（EntityTraceButton / EntityModal）
-│  ├─ composables/          # 组合式逻辑（PDF.js / WebSocket / 通知 / 下载）
-│  ├─ config/               # 前端配置
-│  ├─ constants/            # 常量定义（实体颜色、阶段标签）
-│  ├─ router/               # Vue Router 路由配置
-│  ├─ stores/               # Pinia 状态管理
-│  ├─ styles/               # 全局样式（CSS 变量、reset、主样式）
-│  ├─ types/                # TypeScript 类型定义
-│  ├─ utils/                # 工具函数
-│  ├─ views/                # 页面级组件
-│  │  ├─ ProcessPdfView.vue # PDF 处理主页面
-│  │  ├─ TaskHistoryView.vue# 任务历史
-│  │  └─ ConfigView.vue     # 配置管理
-│  ├─ App.vue               # 根组件（Naive UI 主题 Provider）
-│  └─ main.ts               # 应用入口
-├─ .env.development         # 开发环境变量
-├─ .env.production          # 生产环境变量
-├─ vite.config.ts           # Vite 配置（含 dev proxy）
-├─ tsconfig.app.json        # TypeScript 应用配置
-├─ package.json             # 依赖与脚本
-└─ README.md                # 本文件
+├── public/                  # 静态资源，包含 favicon.svg
+├── src/
+│   ├── api/                 # 后端接口封装
+│   ├── assets/              # Logo 与视觉资源
+│   ├── components/          # 业务组件
+│   │   ├── layout/          # Header / Footer
+│   │   ├── upload/          # URL 提交与上传入口
+│   │   ├── progress/        # 进度卡片、阶段列表、日志
+│   │   ├── pdf/             # PDF 工具栏与 PDF.js 预览
+│   │   └── entity/          # 提取结果入口与弹窗
+│   ├── composables/         # WebSocket / PDF.js / 下载等组合逻辑
+│   ├── constants/           # 阶段与实体颜色常量
+│   ├── router/              # Vue Router
+│   ├── stores/              # Pinia store
+│   ├── styles/              # 全局样式与设计 token
+│   ├── theme/               # Naive UI 主题覆盖
+│   ├── types/               # TypeScript 类型
+│   └── views/               # 页面级组件
+├── package.json
+├── pnpm-lock.yaml
+└── vite.config.ts
 ```
 
 ## 开发命令
 
-```bash
-# 安装依赖
+```powershell
 pnpm install
+pnpm.cmd dev
+pnpm.cmd build
+pnpm.cmd preview
+pnpm.cmd test:dist
+pnpm.cmd lint
+pnpm.cmd test
+```
 
-# 启动开发服务器（port 5173，自动代理 /api 和 /ws 到 localhost:8000）
-pnpm dev
+开发服务器默认运行在：
 
-# 生产构建
-pnpm build
+```text
+http://127.0.0.1:5173
+```
 
-# 预览生产包
-pnpm preview
+查看 `dist/` 生产构建效果：
 
-# 代码检查
-pnpm lint
+```powershell
+pnpm.cmd build
+pnpm.cmd test:dist
+```
 
-# 代码格式化
-pnpm format
+预览地址：
 
-# 运行测试
-pnpm test
+```text
+http://127.0.0.1:4173
 ```
 
 ## 环境变量
@@ -89,37 +97,54 @@ pnpm test
 | `VITE_API_BASE_URL` | `http://localhost:8000` | REST API 基础地址 |
 | `VITE_WS_BASE_URL` | `ws://localhost:8000` | WebSocket 基础地址 |
 
-## 路由规划
+## 后端联调
 
-| 路由 | 页面 | 说明 |
-|---|---|---|
-| `/` | ProcessPdfView | PDF 处理主页面 |
-| `/history` | TaskHistoryView | 任务历史 |
-| `/config` | ConfigView | 解析与高亮配置 |
+启动后端：
 
-## 主题配色
-
-采用**深色科技风**，品牌色：
-
-- **克莱因蓝** `#002FA7` — 主色调（按钮、高亮、进度）
-- **爱马仕橙** `#FF6600` — 辅助色（警告、强调）
-
-## 后端接口对接
-
-前端默认对接以下接口：
-
-```
-POST /api/v1/tasks
-GET  /api/v1/tasks/{taskId}
-GET  /api/v1/tasks/{taskId}/download
-GET  /api/v1/tasks/{taskId}/artifacts/langextract_html
-WS   /ws/{taskId}
+```powershell
+uv run uvicorn services.api.server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-开发环境下，Vite dev server 会自动将 `/api` 和 `/ws` 代理到 `localhost:8000`。
+启动前端：
+
+```powershell
+cd web-pc
+pnpm.cmd dev
+```
+
+Vite 开发代理：
+
+| 前端路径 | 代理目标 |
+|---|---|
+| `/api` | `http://localhost:8000` |
+| `/ws` | `ws://localhost:8000` |
+
+## 主链路
+
+```text
+输入文档 URL
+  -> POST /api/v1/tasks
+  -> 写入 task_id
+  -> 连接 WS /ws/{task_id}
+  -> 更新 MinerU / LangExtract / Highlight 进度
+  -> completed
+  -> 加载高亮 PDF artifact
+  -> 提供结果 PDF 下载与提取结果查看
+```
+
+## 视觉主题
+
+当前采用浅色文档工作台风格：
+
+- 主底色：白色 / 浅蓝灰
+- 文字：灰蓝色
+- 主操作与强调：Logo 呼应橘色 `#f97316` / `#fb923c`
+- PDF 空态：FusionMark 核心轨道图，表达 MinerU 提取、LangExtract 识别、FusionMark 输出高亮 PDF
 
 ## 注意事项
 
-- **Node.js 版本**: 建议 18+
-- **包管理器**: 必须使用 **pnpm**（`.npmrc` 中配置了 `node-linker=hoisted` 以兼容 exFAT 文件系统）
-- **PDF.js Worker**: `pdfjs-dist` 的 Worker 通过 Vite 的 `new URL(..., import.meta.url)` 方式加载
+- 推荐 Node.js 18+。
+- 包管理器使用 `pnpm`。
+- Windows PowerShell 下优先使用 `pnpm.cmd`，避免 `.ps1` 执行策略问题。
+- PDF.js 的文档对象使用 `shallowRef + markRaw` 保存，避免 Vue 代理破坏 PDF.js 私有字段。
+- LangExtract HTML 使用 iframe `sandbox="allow-same-origin allow-scripts"` 嵌入，以支持官方可视化脚本执行。

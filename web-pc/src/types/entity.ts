@@ -7,4 +7,6 @@ export interface EntityColorConfig {
 export interface ExtractedEntity {
   text: string
   type: string
+  char_start?: number | null
+  char_end?: number | null
 }

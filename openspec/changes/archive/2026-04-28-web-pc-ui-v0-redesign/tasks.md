@@ -23,9 +23,9 @@
 ## 3. Validation
 - [x] Run initial `pnpm build` in `web-pc` before later visual tweaks
 - [x] Re-run `pnpm build` after final favicon/orbit asset tweaks
-- [ ] Inspect main layout for overflow/clipping at desktop width
+- [x] Inspect main layout for overflow/clipping at desktop width
 
 ## 4. Current Notes
 - [x] Dev server is reachable at `http://127.0.0.1:5173`
 - [x] `openspec.cmd validate web-pc-ui-v0-redesign` passed after light theme updates
-- [ ] Final commit/push pending user approval
+- [x] Final commit pending user approval

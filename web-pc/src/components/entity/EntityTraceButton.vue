@@ -6,6 +6,7 @@
       type="primary"
       ghost
       :disabled="disabled"
+      :loading="loading"
       block
       @click="emit('click')"
     >
@@ -20,6 +21,7 @@ import { NButton } from 'naive-ui'
 
 defineProps<{
   disabled?: boolean
+  loading?: boolean
   hint?: string
 }>()
 

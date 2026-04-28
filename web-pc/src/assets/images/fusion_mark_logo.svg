@@ -65,7 +65,7 @@
           <animateTransform attributeName="transform" type="rotate" values="0;2;-2;0" dur="4s" repeatCount="indefinite" />
           <animateTransform attributeName="transform" type="scale" values="1;1.02;1" dur="4s" repeatCount="indefinite" additive="sum" />
 
-          <circle r="150" fill="rgba(255,255,255,0.95)" stroke="#334155" stroke-width="16" />
+          <circle r="150" fill="rgba(255,255,255,0.95)" stroke="#334155" stroke-width="42" />
 
           <ellipse cx="-60" cy="-60" rx="40" ry="30" fill="url(#glare)" transform="rotate(-20)" />
 

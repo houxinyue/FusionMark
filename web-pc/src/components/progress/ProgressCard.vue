@@ -17,18 +17,25 @@
         <span class="status-badge" :class="statusClass">{{ statusLabel }}</span>
         <span class="current-stage">{{ currentStageText }}</span>
       </div>
+      <p v-if="taskStore.message" class="progress-message">{{ taskStore.message }}</p>
       <div class="progress-bar">
         <div class="progress-fill" :style="{ width: overallProgress + '%' }" />
         <div v-if="overallProgress > 0 && overallProgress < 100" class="progress-glow" />
       </div>
       <StageList />
       <ProgressLogs />
+      <div v-if="downloadUrl" class="result-actions">
+        <a class="download-link" :href="downloadUrl" target="_blank" rel="noopener noreferrer">
+          下载高亮 PDF
+        </a>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { getTaskDownloadUrl } from '@/api/taskApi'
 import { useTaskStore } from '@/stores/taskStore'
 import { STAGE_LABELS } from '@/constants/stage'
 import StageList from './StageList.vue'
@@ -65,11 +72,20 @@ const currentStageText = computed(() => {
   if (!stages) return '等待任务开始'
   for (const key of ['mineru', 'extraction', 'highlight'] as const) {
     const s = stages[key]
-    if (s && s.state === 'running') {
+    if (s && (s.state === 'running' || s.state === 'processing')) {
       return STAGE_LABELS[key] ?? key
     }
   }
+  if (taskStore.status === 'completed') return '处理完成'
+  if (taskStore.status === 'failed') return '处理失败'
   return '等待任务开始'
+})
+
+const downloadUrl = computed(() => {
+  if (taskStore.status !== 'completed' || !taskStore.currentTaskId) {
+    return ''
+  }
+  return getTaskDownloadUrl(taskStore.currentTaskId)
 })
 </script>
 
@@ -105,7 +121,14 @@ const currentStageText = computed(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.progress-message {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+  line-height: 1.5;
 }
 
 .status-badge {
@@ -172,6 +195,33 @@ const currentStageText = computed(() => {
   background: linear-gradient(90deg, transparent, rgba(251, 146, 60, 0.24), transparent);
   filter: blur(3px);
   animation: shimmer 2s infinite;
+}
+
+.result-actions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.download-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--brand-orange);
+  color: #ffffff;
+  font-size: var(--font-caption);
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.download-link:hover {
+  background: var(--brand-orange-soft);
+  box-shadow: var(--glow-orange);
 }
 
 @keyframes shimmer {

@@ -2,7 +2,7 @@ export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export type StageName = 'mineru' | 'extraction' | 'highlight'
 
-export type StageState = 'pending' | 'running' | 'completed' | 'failed' | 'done'
+export type StageState = 'pending' | 'running' | 'completed' | 'failed' | 'done' | 'processing'
 
 export interface StageProgress {
   state: StageState
@@ -22,6 +22,7 @@ export interface TaskProgress {
 export interface TaskResult {
   output_path?: string
   category_counts?: Record<string, number>
+  objects?: Record<string, unknown>
 }
 
 export interface TaskDetail {
@@ -30,6 +31,20 @@ export interface TaskDetail {
   message?: string
   progress?: TaskProgress
   result?: TaskResult
+}
+
+export interface TaskSnapshot {
+  task_id?: string
+  status?: TaskStatus
+  stage?: TaskProgress['stage']
+  stage_progress?: number
+  overall_progress?: number
+  mineru?: Partial<StageProgress>
+  extraction?: Partial<StageProgress>
+  highlight?: Partial<StageProgress>
+  progress?: Partial<TaskProgress>
+  message?: string
+  result?: TaskResult | null
 }
 
 export interface CreateTaskPayload {
@@ -42,4 +57,13 @@ export interface CreateTaskPayload {
   output_filename?: string | null
   custom_title?: string | null
   custom_prompt?: string | null
+}
+
+export interface CreateTaskResponse {
+  task_id: string
+  status: TaskStatus
+  message: string
+  created_at: string
+  updated_at?: string | null
+  result?: TaskResult | null
 }
