@@ -1,0 +1,120 @@
+:root {
+  /* Logo-aligned light brand palette */
+  --brand-ink: #334155;
+  --brand-ink-soft: #475569;
+  --brand-ink-elevated: #64748b;
+  --brand-orange: #f97316;
+  --brand-orange-soft: #fb923c;
+  --brand-orange-deep: #c2410c;
+  --brand-paper: #ffffff;
+
+  /* Pipeline stage palette, muted for light document UI */
+  --stage-mineru: #0ea5e9;
+  --stage-langextract: #7c3aed;
+  --stage-highlight: var(--brand-orange);
+  --stage-artifact: #d97706;
+
+  /* Semantic palette */
+  --state-info: #0ea5e9;
+  --state-success: #16a34a;
+  --state-warning: #d97706;
+  --state-danger: #e11d48;
+  --state-pending: #94a3b8;
+
+  /* Entity annotation palette */
+  --entity-company-bg: #ffedd5;
+  --entity-company-text: #9a3412;
+  --entity-metric-bg: #dbeafe;
+  --entity-metric-text: #1e40af;
+  --entity-growth-bg: #dcfce7;
+  --entity-growth-text: #166534;
+  --entity-risk-bg: #ffe4e6;
+  --entity-risk-text: #be123c;
+  --entity-source-bg: #ede9fe;
+  --entity-source-text: #5b21b6;
+  --entity-date-bg: #fef3c7;
+  --entity-date-text: #92400e;
+
+  /* Workbench surfaces */
+  --surface-page: #f8fafc;
+  --surface-page-soft: #f1f5f9;
+  --surface-rail: rgba(255, 255, 255, 0.92);
+  --surface-panel: rgba(255, 255, 255, 0.9);
+  --surface-panel-strong: #ffffff;
+  --surface-elevated: #f1f5f9;
+  --surface-sunken: #f8fafc;
+  --surface-canvas: #eef2f7;
+  --surface-hover: rgba(249, 115, 22, 0.06);
+  --surface-active: rgba(249, 115, 22, 0.12);
+  --surface-accent: rgba(249, 115, 22, 0.1);
+
+  /* Text and lines */
+  --text-primary: #334155;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --text-disabled: rgba(100, 116, 139, 0.5);
+  --border-color: rgba(100, 116, 139, 0.24);
+  --border-subtle: rgba(148, 163, 184, 0.26);
+  --border-strong: rgba(71, 85, 105, 0.26);
+  --border-focus: var(--brand-orange);
+
+  /* Effects */
+  --glow-orange: 0 8px 18px rgba(249, 115, 22, 0.18);
+  --glow-scan: 0 6px 16px rgba(251, 146, 60, 0.18);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 10px 24px rgba(15, 23, 42, 0.1);
+  --shadow-panel: 0 18px 42px rgba(15, 23, 42, 0.12);
+  --shadow-glow: var(--glow-orange);
+  --backdrop-panel: blur(16px);
+
+  /* Radius */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.28s ease;
+  --transition-slow: 0.5s ease;
+
+  /* Type scale */
+  --font-display: 22px;
+  --font-headline: 18px;
+  --font-title: 15px;
+  --font-body: 14px;
+  --font-caption: 12px;
+  --font-tiny: 11px;
+
+  /* Backward-compatible aliases */
+  --brand-blue: var(--brand-ink);
+  --brand-blue-soft: var(--brand-ink-soft);
+  --brand-blue-deep: #1e293b;
+  --brand-cyan: var(--stage-mineru);
+  --brand-gold: var(--stage-artifact);
+  --klein-blue: var(--brand-ink);
+  --klein-blue-light: var(--stage-mineru);
+  --klein-blue-dark: #1e293b;
+  --hermes-orange: var(--brand-orange);
+  --hermes-orange-light: var(--brand-orange-soft);
+  --morandi-beige: var(--entity-company-bg);
+  --morandi-gray-blue: var(--entity-metric-bg);
+  --morandi-mint: var(--entity-growth-bg);
+  --morandi-rose: var(--entity-risk-bg);
+  --morandi-lavender: var(--entity-source-bg);
+  --bg-primary: var(--surface-page);
+  --bg-secondary: var(--surface-panel);
+  --bg-tertiary: var(--surface-elevated);
+  --bg-card: rgba(255, 255, 255, 0.78);
+  --bg-hover: var(--surface-hover);
+}

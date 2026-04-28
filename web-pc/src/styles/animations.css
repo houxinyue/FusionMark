@@ -1,0 +1,98 @@
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes docScan {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  30% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  100% {
+    filter: brightness(1.1);
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-elevated) 25%,
+    rgba(251, 146, 60, 0.1) 50%,
+    var(--surface-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+}
+
+.skeleton-block {
+  border-radius: var(--radius-sm);
+  min-height: 16px;
+}
+
+.doc-scan-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.doc-scan-empty .scan-doc-icon {
+  width: 120px;
+  height: 160px;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-headline);
+  position: relative;
+  overflow: hidden;
+}
+
+.doc-scan-empty .scan-doc-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(251, 146, 60, 0.16),
+    transparent
+  );
+  animation: docScan 2s ease-in-out infinite;
+}
+
+.progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(251, 146, 60, 0.2),
+    transparent
+  );
+  filter: blur(4px);
+  animation: skeletonShimmer 2s infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .doc-scan-empty .scan-doc-icon::after,
+  .progress-shimmer {
+    animation: none;
+  }
+}
