@@ -26,17 +26,23 @@ sys.path.insert(0, str(project_root))
 
 from celery_chain_pipeline.progress_manager import get_progress_manager
 
-# 导入项目现有服务 (可能需要根据实际结构调整)
+# 导入项目现有服务
 try:
-    from mineru_client import MinerUClient
-    from full_pipeline_service import FullPipelineService, FullPipelineConfig
-    from md_highlight_service import MDHighlightService
+    from services.clients.mineru import MinerUConfig
+    from services.clients.mineru_provider import MinerUProviderFactory
+    from services.clients.document_input import DocumentInputResolver, DocumentInputResolverConfig
+    from services.core.full_pipeline import FullPipelineConfig
+    from services.core.highlight import MDHighlightService
 except ImportError as e:
     print(f"[CeleryTasks] 导入依赖失败: {e}")
     # 定义占位类，避免启动失败
-    class MinerUClient:
+    class MinerUConfig:
         pass
-    class FullPipelineService:
+    class MinerUProviderFactory:
+        pass
+    class DocumentInputResolver:
+        pass
+    class FullPipelineConfig:
         pass
     class MDHighlightService:
         pass
@@ -125,36 +131,48 @@ def step1_mineru_parse(
         # 标记阶段开始
         progress_manager.update_stage_started(pipeline_task_id, stage)
         
-        # 初始化 MinerU 客户端
-        api_key = os.getenv("MINERU_API_KEY")
-        if not api_key:
-            raise ValueError("MINERU_API_KEY 环境变量未设置")
-        
-        mineru_client = MinerUClient(api_key=api_key)
-        
+        # 构建配置与解析器
+        pipeline_config = FullPipelineConfig()
+        if config:
+            for key, value in config.items():
+                if hasattr(pipeline_config, key):
+                    setattr(pipeline_config, key, value)
+
+        mineru_config = pipeline_config.get_mineru_config()
+        if not mineru_config.api_key and not mineru_config.sdk_token:
+            raise ValueError("MINERU_API_KEY / MINERU_SDK_TOKEN 未配置")
+
+        resolver = pipeline_config.get_document_input_resolver()
+        resolved_input = resolver.resolve(source=document_url, task_id=pipeline_task_id)
+
+        mineru_client = MinerUProviderFactory.create(mineru_config)
+
         # 定义 MinerU 进度回调
         def mineru_callback(attempt: int, state: str, data: Dict):
             """MinerU 进度回调"""
-            # 计算进度
-            if state == "processing":
-                progress = min(50 + attempt * 2, 90)  # 模拟进度
-                message = f"MinerU 解析中... (尝试 {attempt})"
-            elif state == "completed":
+            progress_info = data.get("extract_progress", {})
+            current_page = progress_info.get("extracted_pages", 0)
+            total_pages = progress_info.get("total_pages", 0)
+
+            if total_pages > 0:
+                progress = int((current_page / total_pages) * 100)
+                message = f"MinerU 解析中... 第 {current_page}/{total_pages} 页"
+            elif state in ("done", "completed"):
                 progress = 100
                 message = "MinerU 解析完成"
             else:
-                progress = 10
-                message = f"MinerU 状态: {state}"
-            
+                progress = min(attempt * 10, 90)
+                message = f"MinerU 解析中... (尝试 {attempt})"
+
             progress_manager.update_stage_progress(
                 task_id=pipeline_task_id,
                 stage=stage,
                 progress=progress,
                 message=message,
                 state='running',
-                extra_data={'mineru_state': state, 'attempt': attempt}
+                extra_data={'mineru_state': state, 'attempt': attempt, 'extract_progress': progress_info}
             )
-        
+
         # 调用 MinerU 解析
         progress_manager.update_stage_progress(
             task_id=pipeline_task_id,
@@ -163,35 +181,44 @@ def step1_mineru_parse(
             message="提交 MinerU 解析任务...",
             state='running'
         )
-        
+
         # 执行解析
-        result = mineru_client.parse_document(
-            url=document_url,
-            wait_callback=mineru_callback,
-            enable_ocr=config.get('enable_ocr', True) if config else True,
+        mineru_result = mineru_client.process_document(
+            source=resolved_input.source,
+            model_version=config.get('model', 'vlm') if config else 'vlm',
+            is_ocr=config.get('enable_ocr', True) if config else True,
             enable_formula=config.get('enable_formula', True) if config else True,
             enable_table=config.get('enable_table', True) if config else True,
+            language=config.get('language', 'ch') if config else 'ch',
+            wait_callback=mineru_callback,
         )
-        
+
+        if not mineru_result:
+            raise RuntimeError("MinerU 解析未返回结果")
+        if mineru_result.state == "failed":
+            raise RuntimeError(f"MinerU 解析失败: {mineru_result.error_msg}")
+        if not mineru_result.content:
+            raise RuntimeError("MinerU 未返回内容")
+
         # 标记完成
         progress_manager.update_stage_completed(
             task_id=pipeline_task_id,
             stage=stage,
             result={
-                'mineru_task_id': result.get('task_id'),
-                'total_pages': result.get('total_pages', 0),
-                'image_count': len(result.get('images', []))
+                'mineru_task_id': mineru_result.task_id,
+                'total_pages': 0,  # open_sdk 模式下暂不提供 total_pages
+                'image_count': 0
             }
         )
-        
+
         # 返回给下一步的数据
         return {
             "status": "success",
-            "md_content": result.get('markdown', ''),
-            "mineru_task_id": result.get('task_id'),
-            "total_pages": result.get('total_pages', 0),
-            "images": result.get('images', []),
-            "metadata": result.get('metadata', {})
+            "md_content": mineru_result.content,
+            "mineru_task_id": mineru_result.task_id,
+            "total_pages": 0,
+            "images": [],
+            "metadata": {}
         }
         
     except SoftTimeLimitExceeded:

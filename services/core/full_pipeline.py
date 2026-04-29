@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 
 # 导入已有模块
 from services.clients.document_input import DocumentInputResolver, DocumentInputResolverConfig
-from services.clients.mineru import MinerUClient, MinerUConfig, ParseResult
+from services.clients.mineru import MinerUConfig, ParseResult
 from services.clients.mineru_provider import MinerUProviderFactory
 from services.core.highlight import (
     MDHighlightService, 
@@ -275,7 +275,7 @@ class FullPipelineService:
                 message="MinerU 解析失败"
             )
         
-        if mineru_result.state == MinerUClient.STATE_FAILED:
+        if mineru_result.state == "failed":
             return PipelineResult(
                 success=False,
                 task_id=mineru_result.task_id,

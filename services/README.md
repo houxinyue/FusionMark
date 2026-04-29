@@ -29,7 +29,7 @@ pip install -r requirements.txt
 ```env
 # MinerU API 配置 (必需)
 MINERU_API_KEY=your_mineru_api_key
-MINERU_CLIENT_MODE=open_sdk          # open_sdk 或 legacy_v4
+MINERU_CLIENT_MODE=open_sdk          # 仅支持 open_sdk（legacy_v4 已移除）
 MINERU_SDK_BASE_URL=https://mineru.net/api/v4
 MINERU_SDK_TOKEN_ENV=MINERU_API_KEY
 MINERU_SDK_EXTRA_FORMATS=html,docx   # 可选
@@ -69,15 +69,14 @@ STORE_HIGHLIGHT_ARTIFACTS=true
 
 后端通过 `MINERU_CLIENT_MODE` 选择 MinerU 连接层：
 
-- `open_sdk`：默认模式，使用官方 `mineru-open-sdk`，支持 HTTP(S) URL 与本地文件输入。
-- `legacy_v4`：保留原手写 v4 URL 客户端，作为回滚 fallback，仅支持 HTTP(S) URL。
+- `open_sdk`：使用官方 `mineru-open-sdk`，支持 HTTP(S) URL 与本地文件输入。
 
 任务输入除原 `document_url` URL 外，还可解析：
 
 - `storage://path/to/file.pdf`：从当前 Storage Provider 读取对象，写入 `workspaces/{task_id}/input/` 后交给 SDK。
 - `file://...`、`local://...` 或已存在本地路径：校验文件存在后交给 SDK。
 
-`legacy_v4` 模式仍要求 HTTP(S) URL；storage/local 输入需要使用 `open_sdk`。
+
 
 ### 文件上传任务接口
 
@@ -93,7 +92,7 @@ tasks/{task_id}/input/{safe_filename}
 storage://tasks/{task_id}/input/{safe_filename}
 ```
 
-进入现有文档输入解析逻辑。该接口要求 `MINERU_CLIENT_MODE=open_sdk`；`legacy_v4` 不再兼容上传文件任务。
+进入现有文档输入解析逻辑。
 
 PowerShell 示例：
 

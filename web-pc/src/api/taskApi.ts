@@ -5,6 +5,35 @@ export async function createTask(payload: CreateTaskPayload): Promise<CreateTask
   return http.post('/api/v1/tasks', payload) as unknown as Promise<CreateTaskResponse>
 }
 
+export interface UploadTaskPayload {
+  file: File
+  model?: string
+  enable_ocr?: boolean
+  enable_formula?: boolean
+  enable_table?: boolean
+  language?: string
+  output_filename?: string | null
+  custom_title?: string | null
+  custom_prompt?: string | null
+}
+
+export async function uploadTask(payload: UploadTaskPayload): Promise<CreateTaskResponse> {
+  const formData = new FormData()
+  formData.append('file', payload.file)
+  if (payload.model !== undefined) formData.append('model', payload.model)
+  if (payload.enable_ocr !== undefined) formData.append('enable_ocr', String(payload.enable_ocr))
+  if (payload.enable_formula !== undefined) formData.append('enable_formula', String(payload.enable_formula))
+  if (payload.enable_table !== undefined) formData.append('enable_table', String(payload.enable_table))
+  if (payload.language !== undefined) formData.append('language', payload.language)
+  if (payload.output_filename) formData.append('output_filename', payload.output_filename)
+  if (payload.custom_title) formData.append('custom_title', payload.custom_title)
+  if (payload.custom_prompt) formData.append('custom_prompt', payload.custom_prompt)
+
+  return http.post('/api/v1/tasks/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }) as unknown as Promise<CreateTaskResponse>
+}
+
 export async function getTaskDetail(taskId: string): Promise<TaskDetail> {
   return http.get(`/api/v1/tasks/${taskId}`) as unknown as Promise<TaskDetail>
 }

@@ -1,8 +1,9 @@
 """
 Provider abstraction for MinerU document parsing.
 
-This module keeps SDK-specific and legacy v4-specific behavior behind a
-stable ParseResult contract consumed by the rest of FusionMark.
+This module keeps SDK-specific behavior behind a stable ParseResult
+contract consumed by the rest of FusionMark. Legacy v4 provider has
+been removed; only the official open_sdk provider remains.
 """
 
 from __future__ import annotations
@@ -36,37 +37,6 @@ class MinerUProvider(ABC):
         **kwargs: Any,
     ) -> Optional[ParseResult]:
         """Parse a document and return a normalized result."""
-
-
-class LegacyV4MinerUProvider(MinerUProvider):
-    """Adapter around the existing hand-written v4 URL client."""
-
-    def __init__(self, config: MinerUConfig):
-        self.client = MinerUClient(config)
-
-    def process_document(
-        self,
-        source: str,
-        model_version: str = MinerUClient.MODEL_VLM,
-        wait_callback: Optional[ProgressCallback] = None,
-        **kwargs: Any,
-    ) -> Optional[ParseResult]:
-        if not source.startswith(("http://", "https://")):
-            return ParseResult(
-                task_id="",
-                state=MinerUClient.STATE_FAILED,
-                zip_url="",
-                zip_path="",
-                extract_dir="",
-                error_msg="legacy_v4 MinerU provider only supports HTTP(S) document URLs",
-            )
-
-        return self.client.process_document(
-            url=source,
-            model_version=model_version,
-            wait_callback=wait_callback,
-            **kwargs,
-        )
 
 
 class OpenSdkMinerUProvider(MinerUProvider):
@@ -282,15 +252,13 @@ class OpenSdkMinerUProvider(MinerUProvider):
 class MinerUProviderFactory:
     """Build configured MinerU providers."""
 
-    SUPPORTED_MODES = {"open_sdk", "legacy_v4"}
+    SUPPORTED_MODES = {"open_sdk"}
 
     @classmethod
     def create(cls, config: MinerUConfig) -> MinerUProvider:
         mode = (config.provider_mode or "open_sdk").strip().lower()
         if mode == "open_sdk":
             return OpenSdkMinerUProvider(config)
-        if mode == "legacy_v4":
-            return LegacyV4MinerUProvider(config)
         raise MinerUProviderError(
             f"Unsupported MinerU provider mode: {config.provider_mode}. "
             f"Supported modes: {', '.join(sorted(cls.SUPPORTED_MODES))}"

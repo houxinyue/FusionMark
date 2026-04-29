@@ -7,7 +7,6 @@ import pytest
 
 from services.clients.mineru import MinerUConfig, MinerUClient
 from services.clients.mineru_provider import (
-    LegacyV4MinerUProvider,
     MinerUProviderError,
     MinerUProviderFactory,
     OpenSdkMinerUProvider,
@@ -57,10 +56,10 @@ def test_factory_rejects_unknown_provider():
         MinerUProviderFactory.create(config)
 
 
-def test_factory_creates_legacy_provider():
-    config = MinerUConfig(api_key="key", provider_mode="legacy_v4")
+def test_factory_creates_open_sdk_provider():
+    config = MinerUConfig(api_key="key", provider_mode="open_sdk")
 
-    assert isinstance(MinerUProviderFactory.create(config), LegacyV4MinerUProvider)
+    assert isinstance(MinerUProviderFactory.create(config), OpenSdkMinerUProvider)
 
 
 def test_open_sdk_provider_normalizes_result_and_saves_artifacts(monkeypatch, tmp_path):

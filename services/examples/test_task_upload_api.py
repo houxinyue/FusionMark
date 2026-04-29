@@ -95,23 +95,6 @@ def test_upload_task_persists_with_local_storage_provider(monkeypatch, tmp_path)
         StorageFactory.reset()
 
 
-def test_upload_task_rejects_legacy_v4(monkeypatch):
-    monkeypatch.setattr(
-        server,
-        "_get_effective_pipeline_config",
-        lambda: SimpleNamespace(mineru_client_mode="legacy_v4"),
-    )
-
-    client = TestClient(server.app)
-    response = client.post(
-        "/api/v1/tasks/upload",
-        files={"file": ("report.pdf", b"%PDF-1.4", "application/pdf")},
-    )
-
-    assert response.status_code == 400
-    assert "open_sdk" in response.json()["detail"]
-
-
 def test_upload_task_rejects_unsupported_extension(monkeypatch, tmp_path):
     monkeypatch.setenv("WORKSPACE_ROOT", str(tmp_path / "workspaces"))
     monkeypatch.setattr(

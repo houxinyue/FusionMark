@@ -386,12 +386,6 @@ async def submit_upload_task(
     processed via a storage:// input source. This route requires open_sdk mode.
     """
     config = _get_effective_pipeline_config()
-    if (config.mineru_client_mode or "").lower() != "open_sdk":
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded-file tasks require MINERU_CLIENT_MODE=open_sdk",
-        )
-
     task_id = str(uuid.uuid4())
     document_source = await _persist_upload_file(task_id, file)
 
