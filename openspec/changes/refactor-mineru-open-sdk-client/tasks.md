@@ -36,8 +36,8 @@
 - [x] 6.2 Add unit tests for input resolver URL, storage key, and local path scenarios
 - [x] 6.3 Add normalization tests for Open SDK result objects using mocked SDK responses
 - [x] 6.4 Run backend tests with `uv run pytest`
-- [ ] 6.5 Manually validate one URL document through `open_sdk` mode when credentials/network are available
-- [ ] 6.6 Manually validate one storage object input through `open_sdk` mode when MinIO/storage data is available
+- [x] 6.5 Manually validate one URL document through `open_sdk` mode when credentials/network are available
+- [x] 6.6 Manually validate one storage object input through `open_sdk` mode when MinIO/storage data is available
 
 ## 7. Documentation and Tracking
 
