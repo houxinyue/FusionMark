@@ -6,5 +6,6 @@
 """
 
 from .mineru import MinerUClient, MinerUConfig, ParseResult
+from .mineru_provider import MinerUProviderFactory
 
-__all__ = ["MinerUClient", "MinerUConfig", "ParseResult"]
+__all__ = ["MinerUClient", "MinerUConfig", "ParseResult", "MinerUProviderFactory"]

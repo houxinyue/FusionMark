@@ -22,13 +22,15 @@ import json
 import asyncio
 import yaml
 import shutil
+import re
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query, Form
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
@@ -105,8 +107,11 @@ class SubmitTaskRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError('URL不能为空')
         v = v.strip()
-        if not (v.startswith('http://') or v.startswith('https://')):
-            raise ValueError('URL必须以 http:// 或 https:// 开头')
+        allowed_prefixes = ('http://', 'https://', 'storage://', 'object://', 'minio://', 'file://', 'local://')
+        if not v.startswith(allowed_prefixes):
+            candidate_path = Path(v).expanduser()
+            if not candidate_path.exists():
+                raise ValueError('文档输入必须是 http(s) URL、storage:// 对象 key 或已存在的本地文件')
         return v
 
 
@@ -127,6 +132,122 @@ class TaskStatusResponse(BaseModel):
     progress: Dict[str, Any]
     message: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
+
+
+SUPPORTED_UPLOAD_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".png", ".jpg", ".jpeg", ".html", ".htm"
+}
+MAX_UPLOAD_BYTES = int(os.getenv("TASK_UPLOAD_MAX_BYTES", str(100 * 1024 * 1024)))
+UPLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+def _get_effective_pipeline_config() -> FullPipelineConfig:
+    """Load active profile config or default config for request-time checks."""
+    config, _ = get_current_profile_config()
+    return config or FullPipelineConfig()
+
+
+def _safe_upload_filename(filename: Optional[str]) -> str:
+    """Return a storage-key-safe filename while preserving the extension."""
+    raw = Path(filename or "document").name.strip()
+    if not raw:
+        raw = "document"
+    stem = Path(raw).stem or "document"
+    suffix = Path(raw).suffix.lower()
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._") or "document"
+    return f"{safe_stem}{suffix}"
+
+
+def _validate_upload_filename(filename: str) -> None:
+    suffix = Path(filename).suffix.lower()
+    if suffix not in SUPPORTED_UPLOAD_EXTENSIONS:
+        supported = ", ".join(sorted(SUPPORTED_UPLOAD_EXTENSIONS))
+        raise HTTPException(status_code=400, detail=f"Unsupported upload file type: {suffix}. Supported: {supported}")
+
+
+async def _persist_upload_file(task_id: str, file: UploadFile) -> str:
+    """Persist an uploaded file through Storage Provider and return storage:// source."""
+    try:
+        from services.storage import get_storage_provider
+        from services.storage.workspace import get_workspace_dir
+    except ModuleNotFoundError:
+        from ..storage import get_storage_provider
+        from ..storage.workspace import get_workspace_dir
+
+    safe_filename = _safe_upload_filename(file.filename)
+    _validate_upload_filename(safe_filename)
+
+    upload_dir = get_workspace_dir(task_id) / "upload"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = upload_dir / safe_filename
+
+    total = 0
+    with open(temp_path, "wb") as out:
+        while True:
+            chunk = await file.read(UPLOAD_CHUNK_SIZE)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail=f"Upload file exceeds {MAX_UPLOAD_BYTES} bytes")
+            out.write(chunk)
+
+    if total == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    key = f"tasks/{task_id}/input/{safe_filename}"
+    try:
+        get_storage_provider().save_file(
+            key,
+            str(temp_path),
+            metadata={
+                "task_id": task_id,
+                "original_filename": file.filename or safe_filename,
+                "source": "task_upload",
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to persist uploaded file: {exc}") from exc
+
+    return f"storage://{key}"
+
+
+def _schedule_task_processing(
+    background_tasks: BackgroundTasks,
+    task_id: str,
+    document_source: str,
+    model: str,
+    enable_ocr: bool,
+    enable_formula: bool,
+    enable_table: bool,
+    language: str,
+    output_filename: Optional[str],
+    custom_title: Optional[str],
+    custom_prompt: Optional[str],
+) -> TaskResponse:
+    store = get_task_store()
+    store.create_task(task_id, document_source)
+
+    background_tasks.add_task(
+        process_pdf_task,
+        task_id=task_id,
+        document_url=document_source,
+        model=model,
+        enable_ocr=enable_ocr,
+        enable_formula=enable_formula,
+        enable_table=enable_table,
+        language=language,
+        output_filename=output_filename,
+        custom_title=custom_title,
+        custom_prompt=custom_prompt,
+    )
+
+    return TaskResponse(
+        task_id=task_id,
+        status="pending",
+        message="任务已提交，正在处理中",
+        created_at=datetime.now().isoformat(),
+    )
 
 
 class ProfileInfo(BaseModel):
@@ -208,6 +329,7 @@ async def root():
         "docs": "/docs",
         "endpoints": {
             "submit_task": "POST /api/v1/tasks",
+            "upload_task": "POST /api/v1/tasks/upload",
             "get_task": "GET /api/v1/tasks/{task_id}",
             "list_tasks": "GET /api/v1/tasks",
             "download": "GET /api/v1/tasks/{task_id}/download",
@@ -226,19 +348,13 @@ async def submit_task(
     
     任务将异步执行，返回 task_id 用于查询状态
     """
-    import uuid
-    
     task_id = str(uuid.uuid4())
     
-    # 创建任务记录（Redis 存储）
-    store = get_task_store()
-    store.create_task(task_id, str(request.document_url))
-    
-    # 后台执行处理
-    background_tasks.add_task(
-        process_pdf_task,
+    # Create the task record and enqueue background processing.
+    return _schedule_task_processing(
+        background_tasks=background_tasks,
         task_id=task_id,
-        document_url=str(request.document_url),
+        document_source=str(request.document_url),
         model=request.model,
         enable_ocr=request.enable_ocr,
         enable_formula=request.enable_formula,
@@ -246,14 +362,51 @@ async def submit_task(
         language=request.language,
         output_filename=request.output_filename,
         custom_title=request.custom_title,
-        custom_prompt=request.custom_prompt
+        custom_prompt=request.custom_prompt,
     )
-    
-    return TaskResponse(
+
+
+@app.post("/api/v1/tasks/upload", response_model=TaskResponse)
+async def submit_upload_task(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="Document file to parse"),
+    output_filename: Optional[str] = Form(None),
+    custom_title: Optional[str] = Form(None),
+    custom_prompt: Optional[str] = Form(None),
+    model: str = Form("vlm"),
+    enable_ocr: bool = Form(True),
+    enable_formula: bool = Form(True),
+    enable_table: bool = Form(True),
+    language: str = Form("ch"),
+):
+    """
+    Submit a document-processing task from a multipart file upload.
+
+    Uploaded files are persisted through the active Storage Provider and then
+    processed via a storage:// input source. This route requires open_sdk mode.
+    """
+    config = _get_effective_pipeline_config()
+    if (config.mineru_client_mode or "").lower() != "open_sdk":
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded-file tasks require MINERU_CLIENT_MODE=open_sdk",
+        )
+
+    task_id = str(uuid.uuid4())
+    document_source = await _persist_upload_file(task_id, file)
+
+    return _schedule_task_processing(
+        background_tasks=background_tasks,
         task_id=task_id,
-        status="pending",
-        message="任务已提交，正在处理中",
-        created_at=datetime.now().isoformat()
+        document_source=document_source,
+        model=model,
+        enable_ocr=enable_ocr,
+        enable_formula=enable_formula,
+        enable_table=enable_table,
+        language=language,
+        output_filename=output_filename,
+        custom_title=custom_title,
+        custom_prompt=custom_prompt,
     )
 
 

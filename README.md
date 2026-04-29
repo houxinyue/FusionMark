@@ -172,6 +172,9 @@ cd services
 ```env
 # MinerU API 配置 (必需)
 MINERU_API_KEY=your_mineru_api_key
+MINERU_CLIENT_MODE=open_sdk
+MINERU_SDK_BASE_URL=https://mineru.net/api/v4
+MINERU_SDK_TOKEN_ENV=MINERU_API_KEY
 
 # DeepSeek API 配置 (用于 LangExtract)
 DS_API_KEY=your_deepseek_api_key
@@ -244,6 +247,19 @@ POST /api/v1/tasks
   "language": "ch"
 }
 ```
+
+### 上传文件提交任务
+
+```bash
+POST /api/v1/tasks/upload
+Content-Type: multipart/form-data
+
+file=@report.pdf
+model=vlm
+language=ch
+```
+
+上传文件会通过 Storage Provider 保存到 `tasks/{task_id}/input/`，后台任务再以 `storage://...` 输入进入 MinerU `open_sdk` 解析流程。
 
 ### 查询任务状态
 

@@ -21,7 +21,9 @@ from dataclasses import dataclass, field, asdict
 from dotenv import load_dotenv
 
 # 导入已有模块
+from services.clients.document_input import DocumentInputResolver, DocumentInputResolverConfig
 from services.clients.mineru import MinerUClient, MinerUConfig, ParseResult
+from services.clients.mineru_provider import MinerUProviderFactory
 from services.core.highlight import (
     MDHighlightService, 
     MDHighlightConfig,
@@ -57,12 +59,25 @@ class FullPipelineConfig:
     mineru_language: str = "ch"
     mineru_poll_interval: int = 3
     mineru_max_retries: int = 60
+    mineru_client_mode: str = field(default_factory=lambda: os.getenv("MINERU_CLIENT_MODE", "open_sdk"))
+    mineru_sdk_base_url: str = field(default_factory=lambda: os.getenv("MINERU_SDK_BASE_URL", "https://mineru.net/api/v4"))
+    mineru_sdk_token_env: str = field(default_factory=lambda: os.getenv("MINERU_SDK_TOKEN_ENV", "MINERU_API_KEY"))
+    mineru_sdk_token: str = field(default_factory=lambda: os.getenv(os.getenv("MINERU_SDK_TOKEN_ENV", "MINERU_API_KEY"), ""))
+    mineru_sdk_extra_formats: List[str] = field(default_factory=lambda: _split_env_list(os.getenv("MINERU_SDK_EXTRA_FORMATS", "")))
+    mineru_enable_storage_input: bool = field(default_factory=lambda: os.getenv("MINERU_ENABLE_STORAGE_INPUT", "true").lower() in ("true", "1", "yes"))
+    mineru_enable_local_input: bool = field(default_factory=lambda: os.getenv("MINERU_ENABLE_LOCAL_INPUT", "true").lower() in ("true", "1", "yes"))
     
     # === LangExtract & 渲染配置 ===
     highlight_config: MDHighlightConfig = field(default_factory=MDHighlightConfig)
     
     # === 输出配置 ===
     final_output_dir: str = "highlight_output"
+
+    def __post_init__(self):
+        if not self.mineru_api_key:
+            self.mineru_api_key = os.getenv("MINERU_API_KEY", "")
+        if not self.mineru_sdk_token:
+            self.mineru_sdk_token = os.getenv(self.mineru_sdk_token_env, "")
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FullPipelineConfig":
@@ -109,8 +124,27 @@ class FullPipelineConfig:
             base_url=self.mineru_base_url,
             output_dir=self.mineru_output_dir,
             poll_interval=self.mineru_poll_interval,
-            max_poll_retries=self.mineru_max_retries
+            max_poll_retries=self.mineru_max_retries,
+            provider_mode=self.mineru_client_mode,
+            sdk_base_url=self.mineru_sdk_base_url,
+            sdk_token=self.mineru_sdk_token,
+            sdk_token_env=self.mineru_sdk_token_env,
+            sdk_extra_formats=self.mineru_sdk_extra_formats
         )
+
+    def get_document_input_resolver(self) -> DocumentInputResolver:
+        """Create a resolver for URL, storage object, and local file inputs."""
+        return DocumentInputResolver(
+            DocumentInputResolverConfig(
+                enable_storage_input=self.mineru_enable_storage_input,
+                enable_local_input=self.mineru_enable_local_input,
+            )
+        )
+
+
+def _split_env_list(value: str) -> List[str]:
+    """Parse comma-separated env values into a clean list."""
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 @dataclass
@@ -153,10 +187,11 @@ class FullPipelineService:
         self.config = config or FullPipelineConfig()
         
         # 初始化 MinerU 客户端
-        if not self.config.mineru_api_key:
+        mineru_config = self.config.get_mineru_config()
+        if not mineru_config.api_key and not mineru_config.sdk_token:
             raise ValueError("MinerU API Key 未设置，请设置 MINERU_API_KEY 环境变量或在配置中指定")
         
-        self.mineru_client = MinerUClient(self.config.get_mineru_config())
+        self.mineru_client = MinerUProviderFactory.create(mineru_config)
         
         # 初始化高亮服务
         # 同步输出目录
@@ -213,8 +248,19 @@ class FullPipelineService:
         print("\n📄 Step 1: MinerU 文档解析")
         print("-" * 60)
         
+        try:
+            resolved_input = self.config.get_document_input_resolver().resolve(
+                source=url,
+                task_id="full-pipeline",
+            )
+        except Exception as exc:
+            return PipelineResult(
+                success=False,
+                message=f"文档输入解析失败: {exc}",
+            )
+
         mineru_result = self.mineru_client.process_document(
-            url=url,
+            source=resolved_input.source,
             model_version=self.config.mineru_model,
             is_ocr=self.config.mineru_enable_ocr,
             enable_formula=self.config.mineru_enable_formula,

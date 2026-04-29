@@ -43,6 +43,11 @@ class MinerUConfig:
     poll_interval: int = 3          # 轮询间隔（秒）
     max_poll_retries: int = 60      # 最大轮询次数，<=0 表示无限轮询
     download_timeout: int = 300     # 下载超时（秒）
+    provider_mode: str = "open_sdk"
+    sdk_base_url: str = "https://mineru.net/api/v4"
+    sdk_token: str = ""
+    sdk_token_env: str = "MINERU_API_KEY"
+    sdk_extra_formats: Optional[List[str]] = None
 
 
 @dataclass

@@ -7,6 +7,17 @@
 mineru_api_key: ""  # 从环境变量 MINERU_API_KEY 读取，或在此填写
 mineru_base_url: "https://mineru.net/api/v4/extract"
 
+# MinerU connection provider
+# - open_sdk: official mineru-open-sdk, supports HTTP URL and local file sources
+# - legacy_v4: existing hand-written v4 URL client fallback
+mineru_client_mode: "open_sdk"
+mineru_sdk_base_url: "https://mineru.net/api/v4"
+mineru_sdk_token_env: "MINERU_API_KEY"
+mineru_sdk_token: ""                 # optional explicit token; empty uses mineru_sdk_token_env
+mineru_sdk_extra_formats: []         # e.g. ["docx", "html", "latex"]
+mineru_enable_storage_input: true    # allow storage:// object keys
+mineru_enable_local_input: true      # allow local://, file://, or existing local paths
+
 # 输出目录
 mineru_output_dir: "mineru_output"
 

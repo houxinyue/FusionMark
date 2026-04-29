@@ -53,10 +53,10 @@ def get_pipeline_config():
 def get_mineru_client(config):
     """获取 MinerU 客户端"""
     try:
-        from ..clients.mineru import MinerUClient
+        from ..clients.mineru_provider import MinerUProviderFactory
     except ImportError:
-        from services.clients.mineru import MinerUClient
-    return MinerUClient(config.get_mineru_config())
+        from services.clients.mineru_provider import MinerUProviderFactory
+    return MinerUProviderFactory.create(config.get_mineru_config())
 
 
 def get_highlight_service(config):
@@ -263,7 +263,8 @@ async def process_pdf_task_async(
         config.mineru_enable_table = enable_table
         config.mineru_language = language
         
-        if not config.mineru_api_key:
+        mineru_config = config.get_mineru_config()
+        if not mineru_config.api_key and not mineru_config.sdk_token:
             mark_failed("MinerU API Key 未配置")
             return
         
@@ -280,6 +281,14 @@ async def process_pdf_task_async(
         print(f"[{task_id}] 工作区: mineru={mineru_ws}, highlight={highlight_ws}")
         
         mineru_client = get_mineru_client(config)
+        try:
+            resolved_input = config.get_document_input_resolver().resolve(
+                source=document_url,
+                task_id=task_id,
+            )
+        except Exception as exc:
+            mark_failed(f"文档输入解析失败: {exc}")
+            return
         
         # MinerU 进度回调 - 使用队列实现线程到协程的通信
         progress_queue = asyncio.Queue()
@@ -355,7 +364,7 @@ async def process_pdf_task_async(
         # 在后台线程执行 MinerU 解析
         def run_mineru():
             return mineru_client.process_document(
-                url=document_url,
+                source=resolved_input.source,
                 model_version=config.mineru_model,
                 is_ocr=config.mineru_enable_ocr,
                 enable_formula=config.mineru_enable_formula,
