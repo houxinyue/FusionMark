@@ -21,8 +21,17 @@ def get_pipeline_config():
     """获取 Pipeline 配置（延迟导入避免循环依赖）"""
     try:
         from ..core.full_pipeline import FullPipelineConfig
+        from ..profiles import get_current_user_id, get_profile_manager
     except ImportError:
         from services.core.full_pipeline import FullPipelineConfig
+        from services.profiles import get_current_user_id, get_profile_manager
+
+    try:
+        config, _ = get_profile_manager().get_current_config(get_current_user_id())
+        return config
+    except Exception as e:
+        print(f"[!] Failed to load storage-backed profile config: {e}")
+        return FullPipelineConfig()
     
     # 尝试加载当前激活的配置
     services_dir = Path(__file__).parent.parent

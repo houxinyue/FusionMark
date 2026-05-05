@@ -116,6 +116,11 @@ class StorageProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def delete(self, key: str) -> bool:
+        """Delete one storage object by key."""
+        pass
+
     def save_directory(self, prefix: str, dir_path: str,
                        include_extensions: Optional[List[str]] = None,
                        metadata: Optional[Dict[str, str]] = None) -> List[StorageObject]:

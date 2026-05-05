@@ -58,7 +58,7 @@
 ## Phase 8: Validation (0.5天)
 
 - [x] Validate local provider flow
-- [ ] Validate MinIO provider flow (pending MinIO service setup)
+- [x] Validate MinIO provider flow
 - [x] Validate environment-variable-based artifact retention
 - [x] Validate workspace auto-cleanup
 - [x] Validate artifacts API (GET /artifacts/langextract_html)

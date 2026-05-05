@@ -21,17 +21,15 @@ import os
 import json
 import asyncio
 import yaml
-import shutil
 import re
 import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 from contextlib import asynccontextmanager
-from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect, UploadFile, File, Query, Form
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -41,12 +39,26 @@ try:
     from services.api.progress_store import get_progress_store
     from services.api.websocket_handler import get_websocket_handler
     from services.api.task_processor import process_pdf_task
+    from services.profiles import (
+        ProfileCreateRequest,
+        ProfileUpdateRequest,
+        get_current_user_id,
+        get_profile_manager,
+    )
+    from services.profiles.manager import ProfileConflictError, ProfileError, ProfileNotFoundError
 except ModuleNotFoundError:
     # 从 services 目录内运行时，使用相对导入
     from ..core.full_pipeline import FullPipelineService, FullPipelineConfig, PipelineResult
     from .progress_store import get_progress_store
     from .websocket_handler import get_websocket_handler
     from .task_processor import process_pdf_task
+    from ..profiles import (
+        ProfileCreateRequest,
+        ProfileUpdateRequest,
+        get_current_user_id,
+        get_profile_manager,
+    )
+    from ..profiles.manager import ProfileConflictError, ProfileError, ProfileNotFoundError
 
 # ============ 配置目录 ============
 # 计算 services 目录 (services/api/server.py -> services/)
@@ -57,7 +69,16 @@ PROFILES_DIR.mkdir(exist_ok=True)
 CURRENT_PROFILE_FILE = PROFILES_DIR / ".current.yaml"
 
 
-def get_current_profile_config() -> Tuple[Optional[FullPipelineConfig], Optional[str]]:
+def get_current_profile_config():
+    """Load the active storage-backed profile config for the current user."""
+    try:
+        return get_profile_manager().get_current_config(get_current_user_id())
+    except Exception as e:
+        print(f"[!] åŠ è½½å½“å‰é…ç½®å¤±è´¥: {e}")
+        return None, None
+
+
+def get_legacy_current_profile_config() -> Tuple[Optional[FullPipelineConfig], Optional[str]]:
     """
     获取当前激活的配置文件
     返回: (配置对象, 配置文件名)
@@ -86,6 +107,27 @@ def get_current_profile_config() -> Tuple[Optional[FullPipelineConfig], Optional
 
 
 # ============ 数据模型 ============
+
+def _reload_pipeline_service() -> None:
+    """Rebuild the singleton pipeline service from the active profile."""
+    global pipeline_service
+    config, _ = get_current_profile_config()
+    pipeline_service = FullPipelineService(config or FullPipelineConfig())
+
+
+def _current_profile_response() -> Dict[str, Any]:
+    """Serialize the current profile payload for the API."""
+    config, profile_id = get_profile_manager().get_current_config(get_current_user_id())
+    if profile_id:
+        detail = get_profile_manager().get_profile(get_current_user_id(), profile_id)
+        return {
+            "source": profile_id,
+            "profile_id": profile_id,
+            "config": config.to_dict(),
+            "content": detail.content,
+        }
+    return {"source": "default", "config": config.to_dict()}
+
 
 class SubmitTaskRequest(BaseModel):
     """提交任务请求"""
@@ -252,13 +294,42 @@ def _schedule_task_processing(
 
 class ProfileInfo(BaseModel):
     """配置档案信息"""
+    profile_id: Optional[str] = None
     name: str
     filename: str
+    display_name: Optional[str] = None
     description: Optional[str] = None
     size: int
     created_at: str
     updated_at: str
     is_current: bool = False
+
+
+class ProfileDetailResponse(ProfileInfo):
+    content: str
+    config: Optional[Dict[str, Any]] = None
+
+
+class ProfileCreatePayload(BaseModel):
+    content: str
+    filename: Optional[str] = None
+    profile_id: Optional[str] = None
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    set_as_current: bool = False
+    overwrite: bool = False
+
+
+class ProfileUpdatePayload(BaseModel):
+    content: str
+    filename: Optional[str] = None
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    set_as_current: bool = False
+
+
+class ProfileCopyPayload(BaseModel):
+    target_filename: str
 
 
 # ============ Redis 进度存储 ============
@@ -601,6 +672,73 @@ async def list_profiles():
     
     返回 profiles/ 目录下的所有 YAML 配置档案列表，包含描述信息
     """
+    return get_profile_manager().list_profiles(get_current_user_id())
+
+
+@app.get("/api/v1/profiles/current")
+async def get_current_profile():
+    """Get the active profile content and parsed config."""
+    try:
+        return _current_profile_response()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read profile config: {str(e)}")
+
+
+@app.post("/api/v1/profiles", response_model=ProfileDetailResponse)
+async def create_profile(payload: ProfileCreatePayload):
+    """Create a profile from raw YAML content."""
+    try:
+        detail = get_profile_manager().create_profile(
+            get_current_user_id(),
+            ProfileCreateRequest(**payload.model_dump()),
+        )
+        if payload.set_as_current:
+            _reload_pipeline_service()
+        return detail
+    except ProfileConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ProfileError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/v1/profiles/{profile_id}", response_model=ProfileDetailResponse)
+async def get_profile(profile_id: str):
+    """Read one profile with raw YAML content."""
+    try:
+        return get_profile_manager().get_profile(get_current_user_id(), profile_id)
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.put("/api/v1/profiles/{profile_id}", response_model=ProfileDetailResponse)
+async def update_profile(profile_id: str, payload: ProfileUpdatePayload):
+    """Update one profile from raw YAML content."""
+    try:
+        detail = get_profile_manager().update_profile(
+            get_current_user_id(),
+            profile_id,
+            ProfileUpdateRequest(**payload.model_dump()),
+        )
+        if payload.set_as_current:
+            _reload_pipeline_service()
+        return detail
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ProfileError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/v1/profiles/{profile_id}/copy", response_model=ProfileDetailResponse)
+async def copy_profile(profile_id: str, payload: ProfileCopyPayload):
+    """Copy one profile to a new filename/profile ID."""
+    try:
+        return get_profile_manager().copy_profile(get_current_user_id(), profile_id, payload.target_filename)
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ProfileConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ProfileError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     profiles = []
     current_profile = None
     
@@ -648,6 +786,7 @@ async def upload_profile(
     set_as_current: bool = Query(True, description="是否设为当前配置"),
     description: Optional[str] = Query(None, description="配置档案描述，会写入 YAML 文件")
 ):
+    global pipeline_service
     """
     上传 YAML 配置档案
     
@@ -657,6 +796,30 @@ async def upload_profile(
     - 可通过 description 参数添加描述说明
     """
     # 检查文件类型
+    if not file.filename or not file.filename.endswith((".yaml", ".yml")):
+        raise HTTPException(status_code=400, detail="Only .yaml or .yml files are supported")
+    try:
+        content = (await file.read()).decode("utf-8")
+        detail = get_profile_manager().create_profile(
+            get_current_user_id(),
+            ProfileCreateRequest(
+                content=content,
+                filename=file.filename,
+                description=description,
+                set_as_current=set_as_current,
+                overwrite=True,
+            ),
+        )
+        if set_as_current:
+            _reload_pipeline_service()
+        return {"success": True, "message": f"Profile '{detail.filename}' uploaded", **detail.__dict__}
+    except ProfileConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ProfileError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        await file.close()
+
     if not file.filename.endswith(('.yaml', '.yml')):
         raise HTTPException(status_code=400, detail="只支持 .yaml 或 .yml 文件")
     
@@ -719,7 +882,20 @@ async def activate_profile(profile_name: str):
     
     从 profiles/ 目录加载指定配置并设为当前配置
     """
-    global pipeline_service
+    try:
+        state = get_profile_manager().activate_profile(get_current_user_id(), profile_name)
+        _reload_pipeline_service()
+        return {
+            "success": True,
+            "message": f"Profile '{profile_name}' activated",
+            "profile_file": profile_name,
+            "profile_id": state.current_profile_id,
+            "current_profile_id": state.current_profile_id,
+        }
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ProfileError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     
     # 确保文件名有 .yaml 后缀
     if not profile_name.endswith('.yaml'):
@@ -758,6 +934,17 @@ async def download_profile(profile_name: str):
     下载 profiles/ 目录下的指定 YAML 配置文件
     """
     # 确保文件名有 .yaml 后缀
+    try:
+        detail = get_profile_manager().get_profile(get_current_user_id(), profile_name)
+        from io import BytesIO
+        return StreamingResponse(
+            BytesIO(detail.content.encode("utf-8")),
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": f'attachment; filename="{detail.filename}"'},
+        )
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
     if not profile_name.endswith('.yaml'):
         profile_name = f"{profile_name}.yaml"
     
@@ -781,6 +968,14 @@ async def delete_profile(profile_name: str):
     删除 profiles/ 目录下的指定配置文件（不能删除当前正在使用的配置）
     """
     # 确保文件名有 .yaml 后缀
+    try:
+        get_profile_manager().delete_profile(get_current_user_id(), profile_name)
+        return {"success": True, "message": f"Profile '{profile_name}' deleted"}
+    except ProfileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ProfileConflictError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not profile_name.endswith('.yaml'):
         profile_name = f"{profile_name}.yaml"
     
@@ -811,13 +1006,22 @@ async def delete_profile(profile_name: str):
         raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
 
 
-@app.get("/api/v1/profiles/current")
-async def get_current_profile():
+@app.get("/api/v1/profiles/_legacy_current_disabled")
+async def get_current_profile_legacy_disabled():
     """
     获取当前配置内容
     
     返回当前正在使用的配置的完整 YAML 内容
     """
+    try:
+        config, profile_id = get_profile_manager().get_current_config(get_current_user_id())
+        if profile_id:
+            detail = get_profile_manager().get_profile(get_current_user_id(), profile_id)
+            return {"source": profile_id, "profile_id": profile_id, "config": config.to_dict(), "content": detail.content}
+        return {"source": "default", "config": config.to_dict()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read profile config: {str(e)}")
+
     if not CURRENT_PROFILE_FILE.exists():
         # 返回默认配置
         config = FullPipelineConfig()
@@ -865,7 +1069,11 @@ async def get_default_config():
     返回默认配置的 YAML 格式，可用于创建新配置
     """
     config = FullPipelineConfig()
-    return config.to_dict()
+    config_dict = config.to_dict()
+    return {
+        "config": config_dict,
+        "content": yaml.safe_dump(config_dict, allow_unicode=True, sort_keys=False),
+    }
 
 
 # ============ WebSocket 实时进度 ============
@@ -932,4 +1140,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-

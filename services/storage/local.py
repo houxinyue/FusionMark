@@ -113,6 +113,14 @@ class LocalStorageProvider(StorageProvider):
         """检查本地文件是否存在"""
         return self._to_local_path(key).exists()
 
+    def delete(self, key: str) -> bool:
+        """Delete one local storage object."""
+        local_path = self._to_local_path(key)
+        if not local_path.exists() or not local_path.is_file():
+            return False
+        local_path.unlink()
+        return True
+
     @staticmethod
     def _guess_content_type(key: str) -> str:
         """根据文件扩展名猜测 content type"""

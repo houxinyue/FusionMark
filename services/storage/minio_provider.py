@@ -172,6 +172,15 @@ class MinioStorageProvider(StorageProvider):
         except Exception:
             return False
 
+    def delete(self, key: str) -> bool:
+        """Delete one MinIO storage object."""
+        full_key = self._full_key(key)
+        try:
+            self.client.remove_object(self.bucket, full_key)
+            return True
+        except Exception:
+            return False
+
     @staticmethod
     def _guess_content_type(key: str) -> str:
         """根据文件扩展名猜测 content type"""
