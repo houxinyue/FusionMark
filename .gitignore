@@ -147,6 +147,7 @@ cython_debug/
 .vs/
 .vscode/
 .env
+web-pc/.vite/
 
 #项目相关的内容，
 .kimi/
