@@ -46,6 +46,7 @@ try:
         get_profile_manager,
     )
     from services.profiles.manager import ProfileConflictError, ProfileError, ProfileNotFoundError
+    from services.copilot.router import router as profile_copilot_router
 except ModuleNotFoundError:
     # 从 services 目录内运行时，使用相对导入
     from ..core.full_pipeline import FullPipelineService, FullPipelineConfig, PipelineResult
@@ -59,6 +60,7 @@ except ModuleNotFoundError:
         get_profile_manager,
     )
     from ..profiles.manager import ProfileConflictError, ProfileError, ProfileNotFoundError
+    from ..copilot.router import router as profile_copilot_router
 
 # ============ 配置目录 ============
 # 计算 services 目录 (services/api/server.py -> services/)
@@ -390,6 +392,9 @@ app.add_middleware(
 
 
 # ============ API 路由 ============
+
+app.include_router(profile_copilot_router)
+
 
 @app.get("/")
 async def root():

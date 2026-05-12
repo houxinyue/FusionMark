@@ -122,6 +122,16 @@
               placeholder="在这里编辑 YAML 配置..."
             />
           </label>
+
+          <div class="copilot-entry">
+            <div>
+              <span class="copilot-entry-label">AI Copilot</span>
+              <p>用自然语言生成或修改 Profile YAML 草稿，应用后再手动保存。</p>
+            </div>
+            <n-button type="primary" secondary @click="openCopilotDialog">
+              智能生成配置
+            </n-button>
+          </div>
         </div>
       </n-spin>
     </section>
@@ -134,7 +144,7 @@
         </div>
       </div>
 
-      <div class="summary-group">
+      <div v-if="profileStore.editorMode !== 'new'" class="summary-group">
         <div class="summary-row">
           <span>来源</span>
           <strong>{{ profileStore.currentProfile?.source || 'default' }}</strong>
@@ -220,6 +230,17 @@
         </div>
       </div>
     </n-modal>
+
+    <n-modal
+      v-model:show="copilotDialogVisible"
+      preset="card"
+      title="Profile Copilot"
+      class="copilot-dialog"
+      style="width: min(720px, calc(100vw - 24px))"
+      :bordered="false"
+    >
+      <ProfileCopilotPanel v-if="copilotDialogVisible" @apply-draft="handleApplyCopilotDraft" />
+    </n-modal>
   </div>
 </template>
 
@@ -227,13 +248,17 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { NButton, NEmpty, NInput, NModal, NSpin, NTag, useDialog } from 'naive-ui'
 import { getProfileDownloadUrl } from '@/api/profileApi'
+import ProfileCopilotPanel from '@/components/config/ProfileCopilotPanel.vue'
+import { useProfileCopilotStore } from '@/stores/profileCopilotStore'
 import { useProfileStore } from '@/stores/profileStore'
 
 const profileStore = useProfileStore()
+const profileCopilotStore = useProfileCopilotStore()
 const dialog = useDialog()
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const copyDialogVisible = ref(false)
 const overwriteDialogVisible = ref(false)
+const copilotDialogVisible = ref(false)
 const copyFilename = ref('')
 const pendingUploadFile = ref<File | null>(null)
 
@@ -282,7 +307,9 @@ const validationLabel = computed(() => {
   return '未加载'
 })
 const topLevelKeys = computed(() =>
-  Object.keys((profileStore.originalProfile?.config || profileStore.currentProfile?.config || {}) as Record<string, unknown>).slice(0, 8),
+  profileStore.editorMode === 'new'
+    ? []
+    : Object.keys((profileStore.originalProfile?.config || profileStore.currentProfile?.config || {}) as Record<string, unknown>).slice(0, 8),
 )
 
 function formatBytes(value: number) {
@@ -423,6 +450,18 @@ function cancelOverwriteUpload() {
 function handleDownload() {
   if (!profileStore.selectedProfileId) return
   window.open(getProfileDownloadUrl(profileStore.selectedProfileId), '_blank', 'noopener,noreferrer')
+}
+
+function openCopilotDialog() {
+  profileCopilotStore.reset()
+  copilotDialogVisible.value = true
+}
+
+function handleApplyCopilotDraft(draftYaml: string) {
+  profileStore.draftContent = draftYaml
+  profileStore.statusMessage = 'Copilot 草稿已应用，请检查后保存'
+  profileStore.errorMessage = ''
+  copilotDialogVisible.value = false
 }
 
 async function handleDelete() {
@@ -649,6 +688,7 @@ watch(
 
 .editor-field {
   flex: 1;
+  order: 2;
 }
 
 .yaml-editor {
@@ -674,6 +714,34 @@ watch(
   box-shadow:
     0 0 0 3px rgba(249, 115, 22, 0.12),
     inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.copilot-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  order: 1;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--surface-sunken);
+}
+
+.copilot-entry-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--brand-orange-soft);
+  font-size: var(--font-tiny);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.copilot-entry p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+  line-height: 1.5;
 }
 
 .summary-group {
@@ -746,6 +814,17 @@ watch(
   width: min(480px, calc(100vw - 24px));
 }
 
+.copilot-dialog {
+  width: min(720px, calc(100vw - 24px));
+  max-height: calc(100vh - 48px);
+}
+
+.copilot-dialog :deep(.n-card__content) {
+  min-height: 0;
+  max-height: calc(100vh - 136px);
+  overflow: hidden;
+}
+
 .dialog-body {
   display: flex;
   flex-direction: column;
@@ -782,6 +861,11 @@ watch(
 
   .field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .copilot-entry {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .config-editor {

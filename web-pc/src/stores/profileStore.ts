@@ -128,7 +128,7 @@ export const useProfileStore = defineStore('profile', {
       this.draftFilename = ''
       this.draftDisplayName = ''
       this.draftDescription = ''
-      this.draftContent = this.defaultTemplateContent
+      this.draftContent = ''
       this.clearMessages()
     },
 
