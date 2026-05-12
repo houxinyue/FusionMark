@@ -99,6 +99,30 @@ def test_factory():
         StorageFactory.reset()
 
 
+def test_minio_provider_filters_unsafe_tags():
+    from services.storage.minio_provider import MinioStorageProvider
+
+    class FakeTags(dict):
+        def __init__(self, for_object=True):
+            super().__init__()
+            self.for_object = for_object
+
+    tags = MinioStorageProvider._build_safe_tags(
+        FakeTags,
+        {
+            "task_id": "ab877c4e-6304-46e6-b03f-94280c561fd9",
+            "source": "task_upload",
+            "original_filename": "20260405-简历.pdf",
+            "bad key 中文": "value",
+        },
+    )
+
+    assert tags["task_id"] == "ab877c4e-6304-46e6-b03f-94280c561fd9"
+    assert tags["source"] == "task_upload"
+    assert "original_filename" not in tags
+    assert "bad key 中文" not in tags
+
+
 def test_integration():
     from services.storage import get_storage_provider
     from services.storage.factory import StorageFactory

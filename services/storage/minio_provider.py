@@ -8,6 +8,7 @@ MinIO Storage Provider
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Optional, Dict, List
 
@@ -83,10 +84,7 @@ class MinioStorageProvider(StorageProvider):
         file_size = os.path.getsize(file_path)
         content_type = self._guess_content_type(key)
 
-        tags = Tags(for_object=True)
-        if metadata:
-            for k, v in metadata.items():
-                tags[k] = v
+        tags = self._build_safe_tags(Tags, metadata)
 
         self.client.fput_object(
             self.bucket,
@@ -116,10 +114,7 @@ class MinioStorageProvider(StorageProvider):
         full_key = self._full_key(key)
         content_type = content_type or self._guess_content_type(key)
 
-        tags = Tags(for_object=True)
-        if metadata:
-            for k, v in metadata.items():
-                tags[k] = v
+        tags = self._build_safe_tags(Tags, metadata)
 
         self.client.put_object(
             self.bucket,
@@ -180,6 +175,35 @@ class MinioStorageProvider(StorageProvider):
             return True
         except Exception:
             return False
+
+    @staticmethod
+    def _build_safe_tags(tags_class, metadata: Optional[Dict[str, str]]):
+        """Build MinIO object tags from metadata values that are safe as S3 tags.
+
+        Raw business metadata can contain user filenames with non-ASCII text.
+        MinIO rejects those as tags, so only deterministic ASCII metadata is
+        propagated to object tags.
+        """
+        tags = tags_class(for_object=True)
+        if not metadata:
+            return None
+
+        for key, value in metadata.items():
+            safe_key = str(key)
+            safe_value = str(value)
+            if not MinioStorageProvider._is_safe_tag(safe_key, max_length=128):
+                continue
+            if not MinioStorageProvider._is_safe_tag(safe_value, max_length=256):
+                continue
+            tags[safe_key] = safe_value
+
+        return tags if tags else None
+
+    @staticmethod
+    def _is_safe_tag(value: str, max_length: int) -> bool:
+        if not value or len(value) > max_length:
+            return False
+        return re.fullmatch(r"[A-Za-z0-9 ._\-:/=+@]+", value) is not None
 
     @staticmethod
     def _guess_content_type(key: str) -> str:

@@ -29,9 +29,7 @@ export async function uploadTask(payload: UploadTaskPayload): Promise<CreateTask
   if (payload.custom_title) formData.append('custom_title', payload.custom_title)
   if (payload.custom_prompt) formData.append('custom_prompt', payload.custom_prompt)
 
-  return http.post('/api/v1/tasks/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }) as unknown as Promise<CreateTaskResponse>
+  return http.post('/api/v1/tasks/upload', formData) as unknown as Promise<CreateTaskResponse>
 }
 
 export async function getTaskDetail(taskId: string): Promise<TaskDetail> {

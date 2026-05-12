@@ -20,10 +20,11 @@
         <p class="upload-text">拖放文件到此</p>
         <p class="upload-hint">支持 PDF、MD、图片、PPT 文件</p>
         <n-button class="upload-btn" type="primary" size="small">选择文件</n-button>
+        <p v-if="feedback" class="upload-feedback" :class="{ error: hasError }">{{ feedback }}</p>
         <input
           ref="fileInput"
           type="file"
-          accept=".pdf,.md,.markdown,.png,.jpg,.jpeg,.webp,.ppt,.pptx"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.html,.htm"
           hidden
           @change="handleFileChange"
         />
@@ -33,33 +34,91 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { NButton } from 'naive-ui'
+import { uploadTask } from '@/api/taskApi'
+import { useTaskWebSocket } from '@/composables/useTaskWebSocket'
+import { useTaskStore } from '@/stores/taskStore'
 
-defineProps<{
+const props = defineProps<{
   loading?: boolean
 }>()
 
 const fileInput = ref<HTMLInputElement | null>(null)
+const feedback = ref('')
+const hasError = ref(false)
+const taskStore = useTaskStore()
+const { connect } = useTaskWebSocket()
+const isProcessing = computed(() => Boolean(props.loading) || taskStore.isProcessing)
 
 function handleClick() {
-  if (fileInput.value) {
+  if (!isProcessing.value && fileInput.value) {
     fileInput.value.click()
   }
 }
 
-function handleFileChange(e: Event) {
+function setFeedback(message: string, error = false) {
+  feedback.value = message
+  hasError.value = error
+}
+
+function extractApiError(error: unknown) {
+  const response = (error as { response?: { status?: number; data?: { detail?: unknown } } })?.response
+  const detail = response?.data?.detail
+  if (typeof detail === 'string' && detail.trim()) {
+    return response?.status ? `${response.status}: ${detail}` : detail
+  }
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+  return '未知错误'
+}
+
+async function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement
   const file = target.files?.[0]
+  target.value = ''
   if (file) {
-    console.log('Selected file:', file.name)
+    await submitFile(file)
   }
 }
 
-function handleDrop(e: DragEvent) {
+async function handleDrop(e: DragEvent) {
+  if (isProcessing.value) return
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
-    console.log('Dropped file:', files[0].name)
+    await submitFile(files[0])
+  }
+}
+
+async function submitFile(file: File) {
+  const supported = /\.(pdf|docx?|pptx?|png|jpe?g|html?|htm)$/i
+  if (!supported.test(file.name)) {
+    setFeedback('暂不支持该文件类型，请上传 PDF、Word、PPT、图片或 HTML 文件', true)
+    return
+  }
+
+  setFeedback('正在上传并提交任务...')
+
+  try {
+    const response = await uploadTask({
+      file,
+      model: 'vlm',
+      enable_ocr: true,
+      enable_formula: true,
+      enable_table: true,
+      language: 'ch',
+    })
+
+    taskStore.startTask(response.task_id)
+    taskStore.applyTaskSnapshot(response)
+    connect(response.task_id)
+    setFeedback('文件已上传，正在接收实时进度')
+  } catch (error) {
+    console.error('Upload task failed:', error)
+    const message = extractApiError(error)
+    taskStore.failTask(`上传任务提交失败：${message}`)
+    setFeedback(`上传任务提交失败：${message}`, true)
   }
 }
 </script>
@@ -142,6 +201,17 @@ function handleDrop(e: DragEvent) {
 
 .upload-btn {
   margin-top: 2px;
+}
+
+.upload-feedback {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+  line-height: 1.5;
+}
+
+.upload-feedback.error {
+  color: var(--state-danger);
 }
 
 .upload-skeleton {
