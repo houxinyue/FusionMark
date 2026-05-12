@@ -67,3 +67,22 @@ export interface CreateTaskResponse {
   updated_at?: string | null
   result?: TaskResult | null
 }
+
+export interface TaskListItem {
+  task_id: string
+  document_url: string
+  status: TaskStatus
+  stage: string
+  overall_progress: number
+  message?: string
+  created_at: string
+  updated_at: string
+  result?: TaskResult | null
+}
+
+export interface TaskListResponse {
+  total: number
+  limit: number
+  offset: number
+  tasks: TaskListItem[]
+}

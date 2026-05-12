@@ -163,3 +163,6 @@ doltcfg/
 .doltcfg/
 *.doltcfg
 config.yaml
+
+# Beads backup files
+.beads/backup/

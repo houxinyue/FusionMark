@@ -267,6 +267,22 @@ language=ch
 GET /api/v1/tasks/{task_id}
 ```
 
+### 列出任务历史
+
+```bash
+GET /api/v1/tasks?limit=20&offset=0
+```
+
+返回最近任务列表，支持分页。
+
+### 删除任务
+
+```bash
+DELETE /api/v1/tasks/{task_id}
+```
+
+删除任务记录及其 Storage Provider 中的产物。
+
 ### WebSocket 实时进度
 
 ```javascript
@@ -377,6 +393,7 @@ FusionMark 提供精美的 Web 界面，采用**克莱因蓝 + 爱马仕橙**的
 - 📊 **实时进度** - WebSocket 推送处理进度
 - 🎨 **PDF 预览** - 内置 PDF.js 预览器
 - 📥 **结果下载** - 一键下载高亮 PDF
+- 📜 **任务历史** - 查看 Redis 中所有历史任务，支持分页、状态筛选、查看详情、删除
 
 ### 启动前端
 

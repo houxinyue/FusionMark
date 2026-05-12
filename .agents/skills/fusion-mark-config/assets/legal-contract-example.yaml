@@ -1,101 +1,127 @@
-# 法律合同配置示例
+description: "Legal contract profile with parties, amount, payment terms, dates, clauses, law, and dispute-resolution highlights"
 
-extraction_prompt: |
-  从法律合同文档中提取以下关键信息：
-  
-  1. contract_title: 合同标题
-  2. party_a: 甲方名称
-  3. party_b: 乙方名称
-  4. contract_amount: 合同金额
-  5. payment_terms: 付款条款
-  6. start_date: 合同开始日期
-  7. end_date: 合同结束日期
-  8. termination_clause: 终止条款
-  9. governing_law: 适用法律
-  10. dispute_resolution: 争议解决方式
-  
-  提取规则：
-  - 使用原文中的精确文本
-  - 日期保持原始格式
-  - 金额包含数字和货币单位
-  - 条款引用保留条款编号
-
-examples:
-  - text: |
-      软件技术开发合同
-      甲方：北京科技有限公司
-      乙方：上海软件开发有限公司
-      
-      第一条 合同金额
-      本合同总金额为人民币伍拾万元整（¥500,000）
-      付款方式：合同签订后支付 30%，验收合格后支付 70%
-      
-      第二条 合同期限
-      本合同自 2024年1月1日 起生效，至 2024年12月31日 终止
-      
-      第七条 争议解决
-      本合同适用中华人民共和国法律
-      争议应提交北京仲裁委员会仲裁
-    extractions:
-      - class: contract_title
-        text: "软件技术开发合同"
-      - class: party_a
-        text: "北京科技有限公司"
-      - class: party_b
-        text: "上海软件开发有限公司"
-      - class: contract_amount
-        text: "人民币伍拾万元整（¥500,000）"
-      - class: payment_terms
-        text: "合同签订后支付 30%，验收合格后支付 70%"
-      - class: start_date
-        text: "2024年1月1日"
-      - class: end_date
-        text: "2024年12月31日"
-      - class: governing_law
-        text: "中华人民共和国法律"
-      - class: dispute_resolution
-        text: "提交北京仲裁委员会仲裁"
-
-model_config:
-  model_id: "deepseek-chat"
-  provider: "OpenAILanguageModel"
-  api_key_env: "DS_API_KEY"
-  base_url_env: "DS_API_BASE_URL"
-  provider_kwargs: {}
-
-category_colors:
-  - name: contract_title
-    color: "#e67e22"
-    description: "合同标题"
-  - name: party_a
-    color: "#3498db"
-    description: "甲方"
-  - name: party_b
-    color: "#2ecc71"
-    description: "乙方"
-  - name: contract_amount
-    color: "#00cec9"
-    description: "合同金额"
-  - name: payment_terms
-    color: "#9b59b6"
-    description: "付款条款"
-  - name: start_date
-    color: "#f1c40f"
-    description: "开始日期"
-  - name: end_date
-    color: "#e74c3c"
-    description: "结束日期"
-  - name: termination_clause
-    color: "#c0392b"
-    description: "终止条款"
-  - name: governing_law
-    color: "#6c5ce7"
-    description: "适用法律"
-  - name: dispute_resolution
-    color: "#95a5a6"
-    description: "争议解决"
-
+mineru_api_key: ""
+mineru_base_url: "https://mineru.net/api/v4/extract"
+mineru_client_mode: "open_sdk"
+mineru_sdk_base_url: "https://mineru.net/api/v4"
+mineru_sdk_token_env: "MINERU_API_KEY"
+mineru_sdk_token: ""
+mineru_sdk_extra_formats: []
+mineru_enable_storage_input: true
+mineru_enable_local_input: true
 mineru_output_dir: "mineru_output"
-output_dir: "highlight_output"
-default_title: "合同关键信息提取"
-page_header: "法律合同智能分析"
+mineru_model: "vlm"
+mineru_enable_ocr: true
+mineru_enable_formula: false
+mineru_enable_table: true
+mineru_language: "ch"
+mineru_poll_interval: 3
+mineru_max_retries: 60
+
+highlight_config:
+  extraction_prompt: |
+    Extract key information from a legal contract.
+
+    Categories:
+    1. contract_title: contract title.
+    2. party_a: party A name.
+    3. party_b: party B name.
+    4. contract_amount: total contract amount.
+    5. payment_terms: payment terms.
+    6. start_date: contract start date.
+    7. end_date: contract end date.
+    8. termination_clause: termination clause or termination condition.
+    9. governing_law: governing law.
+    10. dispute_resolution: dispute resolution method.
+
+    Rules:
+    - Use exact source text.
+    - Preserve clause numbers when extracting clause text.
+    - Preserve original date format.
+    - Monetary amounts must include currency symbols or units when present.
+    - Do not summarize legal clauses; extract the source span.
+
+  examples:
+    - text: |
+        Software Development Agreement
+        Party A: Beijing Technology Co., Ltd.
+        Party B: Shanghai Software Development Co., Ltd.
+
+        Article 1 Contract Amount
+        The total contract amount is RMB 500,000.
+        Payment terms: 30% after signing and 70% after acceptance.
+
+        Article 2 Contract Term
+        This agreement starts on January 1, 2024 and ends on December 31, 2024.
+
+        Article 7 Dispute Resolution
+        This contract is governed by the laws of the People's Republic of China.
+        Disputes shall be submitted to Beijing Arbitration Commission.
+      extractions:
+        - class: contract_title
+          text: "Software Development Agreement"
+        - class: party_a
+          text: "Beijing Technology Co., Ltd."
+        - class: party_b
+          text: "Shanghai Software Development Co., Ltd."
+        - class: contract_amount
+          text: "RMB 500,000"
+        - class: payment_terms
+          text: "30% after signing and 70% after acceptance"
+        - class: start_date
+          text: "January 1, 2024"
+        - class: end_date
+          text: "December 31, 2024"
+        - class: governing_law
+          text: "laws of the People's Republic of China"
+        - class: dispute_resolution
+          text: "submitted to Beijing Arbitration Commission"
+
+  model_config:
+    model_id: "deepseek-chat"
+    provider: "OpenAILanguageModel"
+    api_key_env: "DS_API_KEY"
+    base_url_env: "DS_API_BASE_URL"
+    provider_kwargs:
+      temperature: 0.1
+      max_tokens: 4000
+
+  category_colors:
+    - name: contract_title
+      color: "#e67e22"
+      description: "Contract Title"
+    - name: party_a
+      color: "#3498db"
+      description: "Party A"
+    - name: party_b
+      color: "#2ecc71"
+      description: "Party B"
+    - name: contract_amount
+      color: "#00cec9"
+      description: "Contract Amount"
+    - name: payment_terms
+      color: "#9b59b6"
+      description: "Payment Terms"
+    - name: start_date
+      color: "#f1c40f"
+      description: "Start Date"
+    - name: end_date
+      color: "#e74c3c"
+      description: "End Date"
+    - name: termination_clause
+      color: "#c0392b"
+      description: "Termination Clause"
+    - name: governing_law
+      color: "#6c5ce7"
+      description: "Governing Law"
+    - name: dispute_resolution
+      color: "#95a5a6"
+      description: "Dispute Resolution"
+
+  mineru_output_dir: "mineru_output"
+  output_dir: "highlight_output"
+  default_title: "Contract Key Information Extraction"
+  page_header: "Legal Contract Highlight Analysis"
+  renderer: "dom_tracking"
+
+final_output_dir: "highlight_output"

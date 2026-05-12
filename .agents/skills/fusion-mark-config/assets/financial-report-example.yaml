@@ -1,88 +1,114 @@
-# 财务报告配置示例
+description: "Financial report profile with period, company, revenue, profit, expense, growth, currency, and auditor highlights"
 
-extraction_prompt: |
-  从财务报告中提取以下信息：
-  
-  1. report_period: 报告期间（如 2024年第四季度）
-  2. company_name: 公司名称
-  3. revenue: 营业收入（收入金额）
-  4. net_profit: 净利润
-  5. expense: 主要支出项
-  6. growth_rate: 增长率（正值）
-  7. decline_rate: 下降率（负值）
-  8. currency: 货币单位（如 人民币、美元）
-  9. auditor: 审计机构
-  
-  提取规则：
-  - 使用原文中的精确文本
-  - 金额包含货币单位
-  - 百分比保留 % 符号
-  - 区分增长（growth_rate）和下降（decline_rate）
-
-examples:
-  - text: |
-      腾讯控股 2024年第四季度财务报告
-      本季度营业收入 1,652 亿元人民币，同比增长 8%
-      净利润 478 亿元，较上年同期下降 2%
-      主要支出：研发费用 189 亿元
-      审计机构：普华永道中天会计师事务所
-    extractions:
-      - class: company_name
-        text: "腾讯控股"
-      - class: report_period
-        text: "2024年第四季度"
-      - class: revenue
-        text: "1,652 亿元人民币"
-      - class: growth_rate
-        text: "8%"
-      - class: net_profit
-        text: "478 亿元"
-      - class: decline_rate
-        text: "下降 2%"
-      - class: expense
-        text: "研发费用 189 亿元"
-      - class: currency
-        text: "人民币"
-      - class: auditor
-        text: "普华永道中天会计师事务所"
-
-model_config:
-  model_id: "deepseek-chat"
-  provider: "OpenAILanguageModel"
-  api_key_env: "DS_API_KEY"
-  base_url_env: "DS_API_BASE_URL"
-  provider_kwargs: {}
-
-category_colors:
-  - name: report_period
-    color: "#f1c40f"
-    description: "报告期间"
-  - name: company_name
-    color: "#6c5ce7"
-    description: "公司名称"
-  - name: revenue
-    color: "#2ecc71"
-    description: "营业收入"
-  - name: net_profit
-    color: "#3498db"
-    description: "净利润"
-  - name: expense
-    color: "#e74c3c"
-    description: "支出项"
-  - name: growth_rate
-    color: "#e84393"
-    description: "增长率"
-  - name: decline_rate
-    color: "#c0392b"
-    description: "下降率"
-  - name: currency
-    color: "#95a5a6"
-    description: "货币单位"
-  - name: auditor
-    color: "#00cec9"
-    description: "审计机构"
-
+mineru_api_key: ""
+mineru_base_url: "https://mineru.net/api/v4/extract"
+mineru_client_mode: "open_sdk"
+mineru_sdk_base_url: "https://mineru.net/api/v4"
+mineru_sdk_token_env: "MINERU_API_KEY"
+mineru_sdk_token: ""
+mineru_sdk_extra_formats: []
+mineru_enable_storage_input: true
+mineru_enable_local_input: true
 mineru_output_dir: "mineru_output"
-output_dir: "highlight_output"
-default_title: "财务报告分析"
-page_header: "财务报表智能分析"
+mineru_model: "vlm"
+mineru_enable_ocr: true
+mineru_enable_formula: true
+mineru_enable_table: true
+mineru_language: "ch"
+mineru_poll_interval: 3
+mineru_max_retries: 60
+
+highlight_config:
+  extraction_prompt: |
+    Extract key information from a financial report.
+
+    Categories:
+    1. report_period: reporting period.
+    2. company_name: company name.
+    3. revenue_amount: revenue amount.
+    4. net_profit_amount: net profit amount.
+    5. expense_item: major expense item.
+    6. growth_rate: positive growth percentage or growth wording.
+    7. decline_rate: negative growth, decline percentage, or decline wording.
+    8. currency_unit: currency unit.
+    9. auditor_name: auditor or audit firm.
+
+    Rules:
+    - Use exact source text.
+    - Include currency units with monetary values when present.
+    - Preserve percent symbols, commas, and Chinese/English units.
+    - Do not calculate missing values.
+    - Distinguish growth from decline based on explicit wording or signs.
+
+  examples:
+    - text: |
+        Tencent Holdings 2024 Q4 Financial Report
+        Revenue was RMB 165.2 billion, up 8% year over year.
+        Net profit was RMB 47.8 billion, down 2% from the same period last year.
+        Major expense: R&D expense RMB 18.9 billion.
+        Auditor: PricewaterhouseCoopers Zhong Tian LLP
+      extractions:
+        - class: company_name
+          text: "Tencent Holdings"
+        - class: report_period
+          text: "2024 Q4"
+        - class: revenue_amount
+          text: "RMB 165.2 billion"
+        - class: growth_rate
+          text: "up 8%"
+        - class: net_profit_amount
+          text: "RMB 47.8 billion"
+        - class: decline_rate
+          text: "down 2%"
+        - class: expense_item
+          text: "R&D expense RMB 18.9 billion"
+        - class: currency_unit
+          text: "RMB"
+        - class: auditor_name
+          text: "PricewaterhouseCoopers Zhong Tian LLP"
+
+  model_config:
+    model_id: "deepseek-chat"
+    provider: "OpenAILanguageModel"
+    api_key_env: "DS_API_KEY"
+    base_url_env: "DS_API_BASE_URL"
+    provider_kwargs:
+      temperature: 0.1
+      max_tokens: 4000
+
+  category_colors:
+    - name: report_period
+      color: "#f1c40f"
+      description: "Report Period"
+    - name: company_name
+      color: "#6c5ce7"
+      description: "Company"
+    - name: revenue_amount
+      color: "#2ecc71"
+      description: "Revenue"
+    - name: net_profit_amount
+      color: "#3498db"
+      description: "Net Profit"
+    - name: expense_item
+      color: "#e67e22"
+      description: "Expense"
+    - name: growth_rate
+      color: "#27ae60"
+      description: "Growth"
+    - name: decline_rate
+      color: "#e74c3c"
+      description: "Decline"
+    - name: currency_unit
+      color: "#95a5a6"
+      description: "Currency"
+    - name: auditor_name
+      color: "#00cec9"
+      description: "Auditor"
+
+  mineru_output_dir: "mineru_output"
+  output_dir: "highlight_output"
+  default_title: "Financial Report Analysis"
+  page_header: "Financial Report Highlight Analysis"
+  renderer: "dom_tracking"
+
+final_output_dir: "highlight_output"

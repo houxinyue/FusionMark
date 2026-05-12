@@ -1,5 +1,5 @@
 import { http } from './http'
-import type { CreateTaskPayload, CreateTaskResponse, TaskDetail } from '@/types/task'
+import type { CreateTaskPayload, CreateTaskResponse, TaskDetail, TaskListResponse } from '@/types/task'
 
 export async function createTask(payload: CreateTaskPayload): Promise<CreateTaskResponse> {
   return http.post('/api/v1/tasks', payload) as unknown as Promise<CreateTaskResponse>
@@ -36,6 +36,14 @@ export async function uploadTask(payload: UploadTaskPayload): Promise<CreateTask
 
 export async function getTaskDetail(taskId: string): Promise<TaskDetail> {
   return http.get(`/api/v1/tasks/${taskId}`) as unknown as Promise<TaskDetail>
+}
+
+export async function listTasks(limit = 20, offset = 0): Promise<TaskListResponse> {
+  return http.get(`/api/v1/tasks?limit=${limit}&offset=${offset}`) as unknown as Promise<TaskListResponse>
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  await http.delete(`/api/v1/tasks/${taskId}`)
 }
 
 export function getTaskDownloadUrl(taskId: string) {

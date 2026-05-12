@@ -52,7 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   fetchArtifactText,
   getEntitiesArtifactUrl,
@@ -70,12 +71,24 @@ import PdfViewer from '@/components/pdf/PdfViewer.vue'
 import EntityModal from '@/components/entity/EntityModal.vue'
 
 const taskStore = useTaskStore()
+const route = useRoute()
 const pdfViewerRef = ref<InstanceType<typeof PdfViewer> | null>(null)
 const pdfState = reactive({
   currentPage: 1,
   totalPages: 0,
   zoomLevel: 1,
   loading: false,
+})
+
+onMounted(async () => {
+  const taskId = route.query.task_id as string | undefined
+  if (taskId) {
+    try {
+      await taskStore.loadTask(taskId)
+    } catch (error) {
+      console.error('Load historical task failed:', error)
+    }
+  }
 })
 
 function updatePdfState(state: { currentPage: number; totalPages: number; zoomLevel: number; loading: boolean }) {

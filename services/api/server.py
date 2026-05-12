@@ -521,6 +521,33 @@ async def list_tasks(limit: int = 10, offset: int = 0):
     }
 
 
+@app.delete("/api/v1/tasks/{task_id}", status_code=204)
+async def delete_task(task_id: str):
+    """删除任务记录及其产物"""
+    store = get_task_store()
+    task = store.get_task(task_id)
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    
+    # 1. 删除 Redis 任务记录
+    store.delete_task(task_id)
+    
+    # 2. 尝试删除 Storage Provider 中的产物
+    try:
+        from services.storage import get_storage_provider
+        provider = get_storage_provider()
+        prefix = f"tasks/{task_id}"
+        keys = provider.list_keys(prefix)
+        for key in keys:
+            try:
+                provider.delete(key)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 @app.get("/api/v1/tasks/{task_id}/download")
 async def download_result(task_id: str):
     """下载处理结果 PDF"""

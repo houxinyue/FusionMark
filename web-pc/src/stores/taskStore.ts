@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getTaskDetail } from '@/api/taskApi'
 import type {
   StageName,
   StageProgress,
@@ -123,6 +124,14 @@ export const useTaskStore = defineStore('task', {
       this.status = 'failed'
       this.isProcessing = false
       this.message = message ?? '任务处理失败'
+    },
+
+    async loadTask(taskId: string) {
+      this.reset()
+      this.currentTaskId = taskId
+      const detail = await getTaskDetail(taskId)
+      this.applyTaskSnapshot(detail)
+      this.isProcessing = this.status === 'pending' || this.status === 'processing'
     },
 
     reset() {
