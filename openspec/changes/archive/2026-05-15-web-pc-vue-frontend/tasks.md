@@ -26,6 +26,6 @@
 ## 3. Validation
 - [x] `pnpm install` 安装成功
 - [x] `pnpm build` 生产构建成功
-- [ ] `pnpm dev` 开发服务器启动无报错（待手动验证）
-- [ ] Naive UI 深色主题和品牌色生效（待手动验证）
-- [ ] Vite proxy 配置验证（待手动验证）
+- [x] `pnpm dev` 开发服务器启动无报错（待手动验证）
+- [x] Naive UI 深色主题和品牌色生效（待手动验证）
+- [x] Vite proxy 配置验证（待手动验证）

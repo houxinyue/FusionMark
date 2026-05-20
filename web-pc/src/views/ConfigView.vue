@@ -91,7 +91,8 @@
               <span>文件名</span>
               <n-input
                 v-model:value="profileStore.draftFilename"
-                placeholder="例如: smart-report.yaml"
+                placeholder="已自动生成"
+                :disabled="profileStore.editorMode === 'new'"
               />
             </label>
             <label class="field">
@@ -145,10 +146,6 @@
       </div>
 
       <div v-if="profileStore.editorMode !== 'new'" class="summary-group">
-        <div class="summary-row">
-          <span>来源</span>
-          <strong>{{ profileStore.currentProfile?.source || 'default' }}</strong>
-        </div>
         <div class="summary-row">
           <span>Profile ID</span>
           <strong>{{ profileStore.selectedProfileId || '未创建' }}</strong>

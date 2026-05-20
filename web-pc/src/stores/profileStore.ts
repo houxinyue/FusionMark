@@ -33,6 +33,17 @@ function deriveDisplayName(filename: string) {
   return filename.replace(/\.(yaml|yml)$/i, '')
 }
 
+function generateProfileFilename(): string {
+  const now = new Date()
+  const yy = String(now.getFullYear()).slice(2)
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mn = String(now.getMinutes()).padStart(2, '0')
+  const rand = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0')
+  return `profile-${yy}${mm}${dd}-${hh}${mn}-${rand}.yaml`
+}
+
 export const useProfileStore = defineStore('profile', {
   state: () => ({
     profiles: [] as ProfileSummary[],
@@ -125,7 +136,7 @@ export const useProfileStore = defineStore('profile', {
       this.editorMode = 'new'
       this.selectedProfileId = null
       this.originalProfile = null
-      this.draftFilename = ''
+      this.draftFilename = generateProfileFilename()
       this.draftDisplayName = ''
       this.draftDescription = ''
       this.draftContent = ''
