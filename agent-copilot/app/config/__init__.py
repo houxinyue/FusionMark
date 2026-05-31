@@ -1,0 +1,1 @@
+"""Configuration for agent-copilot."""
