@@ -345,7 +345,6 @@ After approval:
 git add <files>
 git commit -m "<type>: <description>"
 git pull --rebase
-bd sync
 git push
 git status
 ```
@@ -455,20 +454,16 @@ Work is not complete until every applicable item below is done.
    ```powershell
    git pull --rebase
    ```
-8. Sync beads:
-   ```powershell
-   bd sync
-   ```
-9. Push:
+8. Push:
    ```powershell
    git push
    ```
-10. Verify remote state:
+9. Verify remote state:
    ```powershell
    git status
    ```
-11. Clean up temporary files, stale stashes, and obsolete branches when safe.
-12. Provide a handoff summary.
+10. Clean up temporary files, stale stashes, and obsolete branches when safe.
+11. Provide a handoff summary.
 
 ---
 
@@ -529,7 +524,6 @@ Understand request
 → ask commit approval
 → commit
 → git pull --rebase
-→ bd sync
 → git push
 → verify status
 → handoff
@@ -546,7 +540,6 @@ Understand request
 → ask commit approval
 → commit
 → pull/rebase
-→ bd sync
 → push
 → handoff
 ```
