@@ -25,6 +25,7 @@
 | 🎨 **可视化高亮** | 将提取结果以彩色边框形式标注在原 PDF 上 |
 | ⚡ **异步任务处理** | 支持 WebSocket 实时进度推送 |
 | 📝 **配置文件驱动** | YAML 配置文件支持，灵活适配不同场景 |
+| 🧠 **配置智能助手** | 独立 `agent-copilot` 模块，面向 Profile YAML 生成、校验、归档 |
 
 ---
 
@@ -448,6 +449,7 @@ fusion-mark/
 │   └── README.md         # 服务层说明
 ├── web-pc/               # 新版前端 (Vue 3 + Vite + TS)
 ├── frontend/             # 旧版前端 (原生 HTML/CSS/JS)
+├── agent-copilot/        # 配置智能助手独立应用
 └── docs/                 # 文档
 ```
 
@@ -464,6 +466,29 @@ fusion-mark/
 | `services/utils/renderer.py` | Markdown 渲染器，将高亮结果转为 PDF |
 | `services/legacy/celery_tasks.py` | ~~Celery 异步任务定义 (已废弃)~~ |
 | `services/legacy/celery_config.py` | ~~Celery 配置 (已废弃)~~ |
+
+### 配置智能助手（agent-copilot）
+
+`agent-copilot/` 是面向 FusionMark Profile YAML 的独立智能助手应用，目标是通过多轮对话帮助用户生成、修改、校验和确认配置草稿。它与主解析服务解耦，可以单独启动、单独测试、单独部署。
+
+当前已完成：
+
+- 独立 FastAPI 应用骨架和启动入口。
+- 会话、消息、checkpoint 领域模型。
+- 内存存储、Redis 会话/checkpoint 适配器、MinIO 会话归档适配器。
+- 统一持久化边界 `CopilotPersistenceBoundary`。
+- Copilot 会话 schema `1.1`，支持草稿、校验结果、待确认动作和 agent trace。
+- Redis key 保持 `agent-copilot:session:{session_id}` 和 `agent-copilot:session:{session_id}:checkpoints`。
+- MinIO 归档路径保持 `{prefix}/{project}/{env}/agent/{user_id}/session/{session_id}.json`。
+
+后续计划：
+
+- Conversation Orchestrator 状态机。
+- Intent Gatekeeper、Context Retriever、Draft Generator、Config Validator 等智能节点。
+- HTTP API 与前端 Copilot 面板集成。
+- 提示词资产和 Profile 上下文提供器。
+
+详细说明参见 [agent-copilot/README.md](agent-copilot/README.md) 和 [Copilot 对话智能架构设计](docs/智能体架构设计/Copilot对话智能架构设计.md)。
 
 ### 渲染流程
 
@@ -591,9 +616,24 @@ fusion-mark/
 │   ├── .env                  # 环境变量配置
 │   └── README.md             # 服务层说明
 │
-├── 📁 web-pc/                # 新版前端 (Vue 3 + Vite + TS)
-├── 📁 frontend/              # 旧版前端 (原生 HTML/CSS/JS)
+├── 📁 agent-copilot/         # ⭐ 配置智能助手独立应用
+│   ├── app/
+│   │   ├── api/              # Copilot HTTP API 预留
+│   │   ├── core/             # 服务门面与编排边界
+│   │   ├── agent/            # 意图、上下文、生成、校验节点预留
+│   │   ├── storage/          # Redis / MinIO / 内存持久化边界
+│   │   ├── models/           # 会话、消息、checkpoint 领域模型
+│   │   ├── schemas/          # 请求响应 DTO
+│   │   ├── config/           # 环境变量配置
+│   │   └── prompts/          # 提示词资产目录
+│   ├── tests/                # 模块级测试
+│   ├── scripts/              # 独立启动脚本
+│   └── README.md             # 智能助手说明
+│
 ├── 📁 docs/                  # 文档
+│   └── 智能体架构设计/        # agent-copilot 架构与存储设计
+├── 📁 openspec/              # 规格驱动变更与归档规范
+├── 📁 .beads/                # bd 任务追踪数据
 ├── 📄 LICENSE
 ├── 📄 .gitignore
 └── 📄 README.md              # 本文件
@@ -684,4 +724,3 @@ bd update <task-id> --status in_progress
 <p align="center">
   <b>FusionMark</b> © 2026 | Powered by MinerU + LangExtract
 </p>
-

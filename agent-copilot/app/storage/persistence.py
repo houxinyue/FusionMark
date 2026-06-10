@@ -50,7 +50,11 @@ class CopilotPersistenceBoundary:
         checkpoint = CopilotCheckpoint(
             checkpoint_id=uuid.uuid4().hex,
             parent_checkpoint_id=parent_checkpoint_id,
+            step=session.current_step,
             messages=list(session.messages),
+            draft_profile=session.current_draft,
+            validation_result=session.last_validation_result,
+            pending_action=session.pending_action,
         )
         session.checkpoints.append(checkpoint)
         self.session_store.save(session)
