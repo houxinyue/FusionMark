@@ -1,541 +1,1210 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FusionMark Vision</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    
-    :root {
-      --klein-blue: #002FA7;
-      --hermes-orange: #FF6600;
-      --dark-bg: #050d1a;
-      --card-bg: rgba(0, 47, 167, 0.12);
-    }
-    
-    .reveal {
-      font-family: "Microsoft YaHei", "PingFang SC", "Inter", sans-serif;
-      background: radial-gradient(ellipse at center, #0a1a33 0%, #050d1a 100%);
-    }
-    
-    .reveal h1, .reveal h2, .reveal h3 {
-      font-family: "Microsoft YaHei", "PingFang SC", "Inter", sans-serif;
-      color: #fff;
-      text-transform: none;
-      letter-spacing: -0.02em;
-    }
-    
-    .reveal h1 { font-size: 1.7em; font-weight: 700; }
-    .reveal h2 { font-size: 1.15em; font-weight: 600; margin-bottom: 0.5em; }
-    .reveal h3 { font-size: 1em; font-weight: 500; }
-    .reveal p, .reveal li { font-size: 0.6em; line-height: 1.5; }
-    
-    /* Slide content wrapper */
-    .slide-content {
-      max-width: 900px;
-      margin: 0 auto;
-      text-align: left;
-      padding: 0 1em;
-    }
-    
-    .slide-center {
-      text-align: center;
-    }
-    
-    /* Cards */
-    .card {
-      background: var(--card-bg);
-      border: 1px solid rgba(0, 47, 167, 0.4);
-      border-radius: 10px;
-      padding: 0.55em 0.9em;
-      margin: 0.35em 0;
-    }
-    
-    .card-orange { border-left: 3px solid var(--hermes-orange); }
-    .card-blue { border-left: 3px solid var(--klein-blue); }
-    .card-light { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
-    
-    /* Badges */
-    .badge {
-      display: inline-block;
-      background: var(--hermes-orange);
-      color: #fff;
-      padding: 0.1em 0.4em;
-      border-radius: 3px;
-      font-size: 0.6em;
-      font-weight: 600;
-      margin-right: 0.35em;
-      vertical-align: middle;
-    }
-    
-    /* Lists */
-    .clean-list {
-      list-style: none;
-      padding-left: 0;
-      margin: 0.6em 0;
-    }
-    .clean-list li {
-      padding: 0.25em 0;
-      padding-left: 1em;
-      position: relative;
-    }
-    .clean-list li::before {
-      content: "▸";
-      color: var(--hermes-orange);
-      position: absolute;
-      left: 0;
-      font-weight: bold;
-    }
-    
-    /* Code block */
-    .code-block {
-      font-size: 0.45em !important;
-      text-align: left;
-      background: #111525;
-      border-radius: 8px;
-      padding: 0.8em;
-      border: 1px solid rgba(255,255,255,0.1);
-      margin: 0;
-    }
-    
-    /* Layout helpers */
-    .flex-row {
-      display: flex;
-      gap: 1.2em;
-      justify-content: space-between;
-      align-items: stretch;
-    }
-    .flex-row > * { flex: 1; }
-    
-    .flex-center {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1em;
-    }
-    
-    /* Pipeline / architecture */
-    .pipe-box {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 6px;
-      padding: 0.4em 0.6em;
-      font-size: 0.5em;
-      display: inline-block;
-      text-align: center;
-      min-width: 80px;
-    }
-    .pipe-arrow {
-      color: var(--hermes-orange);
-      font-size: 0.8em;
-      margin: 0 0.15em;
-    }
-.pipe-layer {
-      background: rgba(0, 47, 167, 0.12);
-      border: 1px solid rgba(0, 47, 167, 0.35);
-      border-radius: 8px;
-      padding: 0.5em 0.7em;
-      margin: 0.25em 0;
-      font-size: 0.68em;
-    }
-    
-    /* Small note */
-    .note {
-      font-size: 0.5em;
-      color: rgba(255,255,255,0.5);
-      margin-top: 0.4em;
-    }
-    
-    /* Cover slogan */
-    .slogan {
-      font-size: 1em;
-      font-weight: 600;
-      color: var(--hermes-orange);
-      margin-top: 1.2em;
-      letter-spacing: 0.04em;
-    }
-    
-    /* Scene cards */
-    .scene-card {
-      background: rgba(255,255,255,0.03);
-      border-radius: 10px;
-      padding: 0.8em;
-      text-align: center;
-      border-top: 3px solid var(--hermes-orange);
-    }
-    .scene-icon { font-size: 1.2em; margin-bottom: 0.25em; }
-    .scene-title { font-size: 0.68em; color: #fff; font-weight: 600; }
-    .scene-desc { font-size: 0.5em; color: rgba(255,255,255,0.65); margin-top: 0.25em; }
-    
-    /* Flywheel */
-.wheel-node {
-      border: 2px solid var(--klein-blue);
-      border-radius: 50%;
-      width: 80px;
-      height: 80px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      font-size: 0.45em;
-      text-align: center;
-      vertical-align: middle;
-    }
-    .wheel-arrow {
-      color: var(--hermes-orange);
-      font-size: 1.3em;
-      vertical-align: middle;
-      margin: 0 0.1em;
-    }
-    
-    /* Highlight mockup */
-    .pdf-mock {
-      background: rgba(255,255,255,0.06);
-      border-radius: 8px;
-      padding: 0.8em;
-      font-size: 0.55em;
-      line-height: 1.65;
-      color: rgba(255,255,255,0.9);
-    }
-    
-    /* Step boxes */
-.step-box {
-      background: rgba(0, 47, 167, 0.18);
-      border: 1px solid rgba(0, 47, 167, 0.45);
-      border-radius: 8px;
-      padding: 0.45em 0.6em;
-      text-align: center;
-      min-width: 120px;
-    }
-    .step-num { color: var(--hermes-orange); font-weight: 600; font-size: 0.65em; }
-    .step-title { color: #fff; font-size: 0.62em; margin-top: 0.2em; }
-    .step-en { color: rgba(255,255,255,0.5); font-size: 0.45em; margin-top: 0.12em; }
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FusionMark · PDF 智能解析与高亮系统</title>
+<link rel="stylesheet" href="../../.agents/skills/html-ppt-skill-main/assets/fonts.css">
+<link rel="stylesheet" href="../../.agents/skills/html-ppt-skill-main/assets/base.css">
+<link rel="stylesheet" href="../../.agents/skills/html-ppt-skill-main/assets/animations/animations.css">
+<style>
+/* ===== FusionMark Brand Theme ===== */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: rgba(100,116,139,.16);
+  --border-strong: rgba(71,85,105,.24);
+  --text-1: #334155;
+  --text-2: #475569;
+  --text-3: #64748b;
+  --accent: #f97316;
+  --accent-2: #475569;
+  --accent-3: #64748b;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #e11d48;
+  --grad: linear-gradient(135deg,#f97316,#fb923c 40%,#334155);
+  --grad-soft: linear-gradient(135deg,#fff7ed,#f1f5f9 55%,#f8fafc);
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-lg: 18px;
+  --shadow: 0 8px 24px rgba(15,23,42,.08), 0 2px 6px rgba(15,23,42,.04);
+  --shadow-lg: 0 18px 42px rgba(15,23,42,.12), 0 6px 16px rgba(15,23,42,.06);
+  --font-sans: 'Inter','Noto Sans SC','Microsoft YaHei',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+  --font-display: var(--font-sans);
+}
+
+/* Brand color utilities */
+.text-mineru { color: #334155 !important; }
+.text-langextract { color: #64748b !important; }
+.text-orange { color: #f97316 !important; }
+.bg-mineru-soft { background: #f1f5f9 !important; }
+.bg-langextract-soft { background: #f8fafc !important; }
+.bg-orange-soft { background: #fff7ed !important; }
+
+/* Slide background variations */
+.slide-bg-soft { background: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%); }
+.slide-bg-grid::before {
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background:linear-gradient(rgba(148,163,184,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.12) 1px,transparent 1px);
+  background-size:40px 40px;
+}
+
+/* Stage badge */
+.stage-badge {
+  display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;
+}
+.stage-badge.mineru { background:#f1f5f9;color:#334155;border:1px solid #cbd5e1; }
+.stage-badge.langextract { background:#f8fafc;color:#64748b;border:1px solid #e2e8f0; }
+.stage-badge.highlight { background:#fff7ed;color:#9a3412;border:1px solid #fed7aa; }
+
+/* Pipeline arrow */
+.pipe-arrow {
+  display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:50%;background:var(--surface-2);color:var(--text-3);font-size:14px;
+}
+
+/* Custom card accent borders */
+.card-mineru { border-top:3px solid #334155 !important; }
+.card-langextract { border-top:3px solid #64748b !important; }
+.card-orange { border-top:3px solid #f97316 !important; }
+
+/* Numbered step circles */
+.step-circle {
+  width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:16px;flex-shrink:0;
+}
+
+/* Feature icon placeholder */
+.ficon {
+  width:48px;height:48px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px;
+}
+
+/* Terminal/code block styling */
+.fm-terminal {
+  background:#1e293b;border-radius:var(--radius);padding:22px 26px;color:#e2e8f0;font-family:var(--font-mono);font-size:13px;line-height:1.7;overflow:auto;
+}
+.fm-terminal .tbar { display:flex;gap:6px;margin-bottom:14px; }
+.fm-terminal .tdot { width:10px;height:10px;border-radius:50%; }
+.fm-terminal .tdot.r { background:#ef4444; } .fm-terminal .tdot.y { background:#f59e0b; } .fm-terminal .tdot.g { background:#22c55e; }
+.fm-terminal .tkw { color:#f472b6; } .fm-terminal .tfn { color:#38bdf8; } .fm-terminal .tstr { color:#a3e635; } .fm-terminal .tcmt { color:#64748b; }
+
+/* Two-tone gradient text */
+.grad-text {
+  background:linear-gradient(135deg,#334155 30%,#f97316 70%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+}
+
+/* Layout helpers */
+.pipeline-row { display:flex;align-items:center;gap:16px; }
+.pipeline-item { flex:1; }
+@media (max-width:900px){ .pipeline-row{flex-direction:column;} .pipe-arrow{transform:rotate(90deg);} }
+</style>
 </head>
 <body>
-  <div class="reveal">
-    <div class="slides">
-      
-      <!-- Slide 1: Cover -->
-      <section>
-        <div class="slide-center" style="margin-top: 3em;">
-          <div style="font-size: 2.4em; font-weight: 700;">FusionMark</div>
-          <div class="slogan" style="font-size: 0.75em;">
-            让文档直接变成模型可用的数据资产
-          </div>
-          <div style="margin-top: 3em; font-size: 0.55em; color: rgba(255,255,255,0.7);">
-            智能文档解析 · 实体自动提取 · 可视化高亮渲染
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 2: Problem -->
-      <section>
-        <h2>
-          文档提取的产出不是文档，而是数据
-        </h2>
-        <div class="slide-content">
-          <div class="card card-orange">
-            <span class="badge">01</span>
-            <span style="font-size: 0.75em; color: #fff;">多模态格式复杂，统一解析困难</span>
-            <div class="note">PDF、Word、PPT、图片等版式千差万别，难以统一处理。</div>
-          </div>
-          <div class="card card-blue">
-            <span class="badge">02</span>
-            <span style="font-size: 0.75em; color: #fff;">人工标注成本高，无法规模化</span>
-            <div class="note">依赖人工标注费用高昂，且难以应对海量文档。</div>
-          </div>
-          <div class="card card-orange">
-            <span class="badge">03</span>
-            <span style="font-size: 0.75em; color: #fff;">提取结果碎片化，难以喂养下游模型</span>
-            <div class="note">提取结果缺乏精确溯源，无法直接用于模型训练。</div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 3: Positioning -->
-      <section>
-        <h2>
-          FusionMark = 高亮可视化 + 结构化数据生产
-        </h2>
-        <div class="slide-content">
-          <ul class="clean-list">
-            <li><b class="highlight-orange">双引擎驱动：</b>MinerU 解析 + LangExtract 提取</li>
-            <li><b class="highlight-blue">零漂移高亮：</b>带坐标溯源的彩色 PDF 标注</li>
-            <li><b class="highlight-orange">数据即养料：</b>同步产出可消费的 JSON 实体</li>
-          </ul>
-          <div class="flex-center" style="margin-top: 1.5em;">
-            <div class="card-light" style="text-align: center; width: 45%;">
-              <div style="font-size: 1.1em;">👁️</div>
-              <div style="font-size: 0.7em; color: #fff; margin-top: 0.2em;">高亮 PDF</div>
-              <div class="note">人工质检与复核界面</div>
-            </div>
-            <div style="font-size: 1em; color: var(--hermes-orange);">⇄</div>
-            <div class="card-light" style="text-align: center; width: 45%;">
-              <div style="font-size: 1.1em;">⚙️</div>
-              <div style="font-size: 0.7em; color: #fff; margin-top: 0.2em;">JSON 实体</div>
-              <div class="note">机器可直接消费的数据资产</div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 4: Architecture -->
-      <section>
-        <h2>
-          从任意文档到模型训练数据的完整管道
-        </h2>
-        <div class="slide-content" style="text-align: center;">
-          <div class="pipe-layer">
-            <span class="pipe-box">PDF</span>
-            <span class="pipe-box">Word</span>
-            <span class="pipe-box">PPT</span>
-            <span class="pipe-box">Image</span>
-            <span class="pipe-box">HTML</span>
-          </div>
-          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
-          <div class="pipe-layer" style="background: rgba(0, 47, 167, 0.22);">
-            <span class="pipe-box" style="border-color: var(--klein-blue);">MinerU</span>
-            <span class="pipe-arrow">→</span>
-            <span style="font-size: 0.8em; color: rgba(255,255,255,0.8);">Markdown + 空间位置信息</span>
-          </div>
-          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
-          <div class="pipe-layer">
-            <span class="pipe-box" style="border-color: var(--klein-blue);">DOM-Tracking</span>
-            <span class="pipe-arrow">→</span>
-            <span class="pipe-box" style="border-color: var(--hermes-orange);">LangExtract</span>
-            <span class="pipe-arrow">→</span>
-            <span style="font-size: 0.8em; color: rgba(255,255,255,0.8);">结构化实体</span>
-          </div>
-          <div style="color: var(--hermes-orange); font-size: 0.8em; margin: 0.2em 0;">↓</div>
-          <div class="pipe-layer" style="background: rgba(255, 102, 0, 0.12); border-color: rgba(255, 102, 0, 0.35);">
-            <span class="pipe-box">JSON 数据集</span>
-            <span class="pipe-box" style="margin-left: 0.5em;">高亮 PDF</span>
-            <span class="pipe-arrow" style="margin-left: 0.5em;">→</span>
-            <span class="pipe-box" style="border-color: var(--klein-blue);">RAG / SFT / Agent</span>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 5: DOM-Tracking Tech -->
-      <section>
-        <h2>
-          DOM-Tracking 解决了 Markdown 与纯文本的坐标错位
-        </h2>
-        <div class="slide-content" style="text-align: center;">
-          <div class="flex-center" style="flex-wrap: wrap; gap: 0.4em;">
-            <div class="step-box">
-              <div class="step-num">Step 1</div>
-              <div class="step-title">HTML 节点打标</div>
-              <div class="step-en">注入 data-node-id</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="step-box">
-              <div class="step-num">Step 2</div>
-              <div class="step-title">纯文本拼接</div>
-              <div class="step-en">去除 Markdown 标记干扰</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="step-box">
-              <div class="step-num">Step 3</div>
-              <div class="step-title">LLM 纯净提取</div>
-              <div class="step-en">LangExtract 提取实体</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="step-box" style="border-color: var(--hermes-orange); background: rgba(255,102,0,0.1);">
-              <div class="step-num">Step 4</div>
-              <div class="step-title">坐标回溯高亮</div>
-              <div class="step-en">字符级精准标注</div>
-            </div>
-          </div>
-          <div class="card" style="margin-top: 1.5em; text-align: left;">
-            <ul class="clean-list">
-              <li><b class="highlight-orange">零漂移：</b>字符级精确标注，彻底解决错位</li>
-              <li><b class="highlight-blue">零伪阳性：</b>只在目标 DOM 节点内高亮</li>
-              <li><b class="highlight-orange">Token 降本：</b>剥离标记后 LLM 成本降低 20-40%</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 6: Data Flywheel -->
-      <section>
-        <h2>
-          标注质量越高，模型越准，反哺提取效果
-        </h2>
-        <div class="slide-content" style="text-align: center; margin-top: 1.5em;">
-          <div class="flex-center" style="flex-wrap: wrap;">
-            <div class="wheel-node">
-              <div style="color: #fff; font-weight: 600;">业务文档</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="wheel-node" style="border-color: var(--hermes-orange);">
-              <div style="color: var(--hermes-orange); font-weight: 600;">自动提取</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="wheel-node">
-              <div style="color: #fff; font-weight: 600;">标注数据</div>
-            </div>
-            <div class="wheel-arrow">→</div>
-            <div class="wheel-node" style="border-color: var(--hermes-orange);">
-              <div style="color: var(--hermes-orange); font-weight: 600;">模型微调</div>
-            </div>
-          </div>
-          <div class="card" style="margin-top: 2em; text-align: center;">
-            <div style="font-size: 0.75em; color: rgba(255,255,255,0.9);">
-              FusionMark 不是工具，而是 <span class="highlight-orange">数据资产沉淀的入口</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 7: Dual Output -->
-      <section>
-        <h2>
-          一页 PDF 高亮，对应一份 JSON 数据集
-        </h2>
-        <div class="slide-content">
-          <div class="flex-row" style="align-items: stretch;">
-            <div class="card-light" style="display: flex; flex-direction: column;">
-              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">👁️ 高亮 PDF</div>
-              <div class="pdf-mock" style="flex: 1;">
-                <p>根据最新财报，<mark style="background: #2ecc71; color: #000; padding: 1px 4px; border-radius: 3px;">苹果</mark>公司表现强劲。</p>
-                <table style="width:100%; border-collapse: collapse; font-size: 0.9em; margin-top: 0.5em;">
-                  <tr style="border-bottom: 1px solid rgba(255,255,255,0.15);">
-                    <td style="padding: 4px;">品牌</td>
-                    <td style="padding: 4px;">出货量</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 4px;"><mark style="background: #2ecc71; color: #000; padding: 1px 4px; border-radius: 3px;">苹果</mark></td>
-                    <td style="padding: 4px;"><mark style="background: #3498db; color: #fff; padding: 1px 4px; border-radius: 3px;">240.6</mark> M</td>
-                  </tr>
-                </table>
-              </div>
-              <div class="note" style="text-align: center;">人工质检与复核界面</div>
-            </div>
-            <div class="card-light" style="display: flex; flex-direction: column;">
-              <div style="font-size: 0.75em; color: #5d9bff; font-weight: 600; margin-bottom: 0.4em;">⚙️ JSON 实体</div>
-              <pre class="code-block" style="flex: 1; margin: 0;"><code class="json">[
-  {
-    "class": "company_name",
-    "text": "苹果",
-    "char_interval": [12, 14],
-    "node_id": "node_2"
-  },
-  {
-    "class": "shipment_value",
-    "text": "240.6",
-    "char_interval": [45, 50],
-    "node_id": "node_5"
-  }
-]</code></pre>
-              <div class="note" style="text-align: center;">可直接用于 RAG / SFT 训练</div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 8: Frontend & API -->
-      <section>
-        <h2>
-          Web 界面即开即用，API 可无缝集成
-        </h2>
-        <div class="slide-content">
-          <div class="flex-row">
-            <div>
-              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">Web 前端</div>
-              <ul class="clean-list">
-                <li>拖拽上传 + URL 输入</li>
-                <li>WebSocket 实时进度推送</li>
-                <li>PDF.js 预览 + 一键下载</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-size: 0.75em; color: #5d9bff; font-weight: 600; margin-bottom: 0.4em;">API 接口</div>
-              <ul class="clean-list">
-                <li>POST /api/v1/tasks</li>
-                <li>GET /api/v1/tasks/{id}</li>
-                <li>WebSocket /ws/{id}</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-size: 0.75em; color: var(--hermes-orange); font-weight: 600; margin-bottom: 0.4em;">配置驱动</div>
-              <ul class="clean-list">
-                <li>YAML Profile 定义提取规则</li>
-                <li>灵活适配不同领域场景</li>
-                <li>颜色映射 + Few-shot 示例</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 9: Use Cases -->
-      <section>
-        <h2>
-          从知识库构建到模型训练数据生产
-        </h2>
-        <div class="slide-content">
-          <div class="flex-row" style="gap: 0.8em;">
-            <div class="scene-card">
-              <div class="scene-icon">🏛️</div>
-              <div class="scene-title">领域知识库构建</div>
-              <div class="scene-desc">法律、医疗、金融文档结构化，沉淀可检索知识资产</div>
-            </div>
-            <div class="scene-card">
-              <div class="scene-icon">🧠</div>
-              <div class="scene-title">模型训练数据标注</div>
-              <div class="scene-desc">为 SFT 和 RAG 生产高质量结构化语料</div>
-            </div>
-            <div class="scene-card">
-              <div class="scene-icon">📈</div>
-              <div class="scene-title">智能研报分析</div>
-              <div class="scene-desc">自动提取核心指标，生成带标注的数据资产</div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Slide 10: Closing -->
-      <section>
-        <div class="slide-center" style="margin-top: 3.5em;">
-          <div style="font-size: 1.8em; font-weight: 700; color: #fff;">
-            把沉睡的文档，转化为流动的模型燃料
-          </div>
-          <div class="slogan" style="font-size: 0.9em; margin-top: 0.8em;">
-            FusionMark
-          </div>
-          <div style="margin-top: 3em; font-size: 0.5em; color: rgba(255,255,255,0.6); line-height: 1.9;">
-            <div><span style="color: var(--hermes-orange);">开源协议</span> · MIT License</div>
-            <div><span style="color: var(--hermes-orange);">联系邮箱</span> · houxinyue18@outlook.com</div>
-            <div><span style="color: var(--hermes-orange);">项目仓库</span> · github.com/your-repo/fusion-mark</div>
-          </div>
-          <div class="note" style="margin-top: 2em;">Powered by MinerU + LangExtract + WeasyPrint</div>
-        </div>
-      </section>
-      
+<div class="deck">
+
+<!-- ===== 1. 封面 ===== -->
+<section class="slide slide-bg-soft slide-bg-grid is-active" data-title="Cover">
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#334155,#64748b,#f97316);"></div>
+  <p class="kicker anim-fade-down" data-anim="fade-down">智能文档解析 · 实体自动提取 · 可视化高亮渲染</p>
+  <h1 class="h1 anim-fade-up" data-anim="fade-up" style="font-size:68px;">FusionMark</h1>
+  <p class="lede mt-m" style="font-size:26px;">基于 <span class="text-mineru" style="font-weight:700">MinerU</span> + <span class="text-langextract" style="font-weight:700">LangExtract</span> 的<br>PDF 智能解析与高亮系统</p>
+  <div class="row mt-l" style="gap:14px;">
+    <span class="stage-badge mineru">MinerU 文档解析</span>
+    <span class="stage-badge langextract">LangExtract 实体提取</span>
+    <span class="stage-badge highlight">WeasyPrint 渲染</span>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark Team · 2026</span><span class="slide-number" data-current="1" data-total="32"></span></div>
+  <div class="notes">欢迎大家来到 FusionMark 项目介绍。今天我将用32页幻灯片，带大家全面了解我们的 PDF 智能解析与高亮系统。</div>
+</section>
+
+<!-- ===== 2. 目录 ===== -->
+<section class="slide" data-title="目录">
+  <p class="kicker">Agenda</p>
+  <h2 class="h2">今天的内容</h2>
+  <div class="grid g3 mt-l anim-stagger-list" data-anim-target>
+    <div class="card card-orange">
+      <div class="step-circle bg-orange-soft text-orange" style="margin-bottom:14px;">01</div>
+      <h4>项目概览</h4>
+      <p class="dim">背景、架构、核心能力与数据流转</p>
+    </div>
+    <div class="card card-mineru">
+      <div class="step-circle bg-mineru-soft text-mineru" style="margin-bottom:14px;">02</div>
+      <h4>MinerU</h4>
+      <p class="dim">多模态文档解析工具的功能与技术原理</p>
+    </div>
+    <div class="card card-langextract">
+      <div class="step-circle bg-langextract-soft text-langextract" style="margin-bottom:14px;">03</div>
+      <h4>LangExtract</h4>
+      <p class="dim">基于 LLM 的结构化信息提取库</p>
+    </div>
+    <div class="card card-orange">
+      <div class="step-circle bg-orange-soft text-orange" style="margin-bottom:14px;">04</div>
+      <h4>融合管道</h4>
+      <p class="dim">MinerU + LangExtract 的整合流程</p>
+    </div>
+    <div class="card card-mineru">
+      <div class="step-circle bg-mineru-soft text-mineru" style="margin-bottom:14px;">05</div>
+      <h4>配置与生态</h4>
+      <p class="dim">Profile YAML、Copilot 与前端界面</p>
+    </div>
+    <div class="card card-langextract">
+      <div class="step-circle bg-langextract-soft text-langextract" style="margin-bottom:14px;">06</div>
+      <h4>总结与展望</h4>
+      <p class="dim">应用场景、优势总结与未来规划</p>
     </div>
   </div>
-  
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
-  <script>
-    Reveal.initialize({
-      hash: true,
-      slideNumber: 'c/t',
-      controls: false,
-      progress: true,
-      touch: true,
-      center: true,
-      mouseWheel: true,
-      transition: 'convex',
-      backgroundTransition: 'fade',
-      plugins: [ RevealHighlight ]
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="2" data-total="32"></span></div>
+</section>
+
+<!-- ===== 3. 项目背景 ===== -->
+<section class="slide" data-title="项目背景">
+  <p class="kicker">Background</p>
+  <h2 class="h2">为什么需要 FusionMark？</h2>
+  <div class="grid g2 mt-l" style="align-items:start;">
+    <div class="stack">
+      <div class="card">
+        <h4>📄 文档信息过载</h4>
+        <p class="dim">企业每天处理大量 PDF 报告、合同、论文，人工阅读标注效率极低，关键信息容易被遗漏。</p>
+      </div>
+      <div class="card">
+        <h4>🔍 提取精度不足</h4>
+        <p class="dim">传统 OCR 和规则提取难以处理复杂排版、表格、公式等多模态元素，准确率难以保证。</p>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card">
+        <h4>🎨 可视化呈现困难</h4>
+        <p class="dim">提取结果往往以结构化数据呈现，无法直观地在原文档上标注，不利于人工复核与展示。</p>
+      </div>
+      <div class="card">
+        <h4>⚙️ 配置灵活性差</h4>
+        <p class="dim">不同业务场景需要提取不同类别的实体，缺乏可配置、可扩展的提取方案。</p>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="3" data-total="32"></span></div>
+  <div class="notes">这一页我们要让听众感受到痛点：信息过载、提取不准、可视化差、配置不灵活。这四个痛点正是 FusionMark 要解决的核心问题。</div>
+</section>
+
+<!-- ===== 4. 项目简介 ===== -->
+<section class="slide slide-bg-soft" data-title="项目简介">
+  <p class="kicker">Introduction</p>
+  <h2 class="h2">FusionMark 是什么？</h2>
+  <p class="lede mt-m">一个将 <strong>多模态文档解析</strong> 与 <strong>LLM 智能实体提取</strong> 相结合的 PDF 高亮系统，能够自动从文档中提取关键信息并以彩色高亮形式标注在原文上。</p>
+  <div class="grid g3 mt-l anim-stagger-list" data-anim-target>
+    <div class="card center tc">
+      <div style="font-size:52px;margin-bottom:10px;">🎯</div>
+      <h4>多模态解析</h4>
+      <p class="dim">支持 PDF、Word、PPT、图片、HTML 等多种格式</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:52px;margin-bottom:10px;">🤖</div>
+      <h4>智能实体提取</h4>
+      <p class="dim">基于大语言模型自动识别文档关键信息</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:52px;margin-bottom:10px;">🎨</div>
+      <h4>可视化高亮</h4>
+      <p class="dim">将提取结果以彩色边框标注在原 PDF 上</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="4" data-total="32"></span></div>
+</section>
+
+<!-- ===== 5. 核心能力 ===== -->
+<section class="slide" data-title="核心能力">
+  <p class="kicker">Capabilities</p>
+  <h2 class="h2">六大核心能力</h2>
+  <div class="grid g3 mt-l">
+    <div class="card card-hover">
+      <div class="ficon bg-mineru-soft text-mineru">📑</div>
+      <h4>多模态文档解析</h4>
+      <p class="dim">MinerU 引擎精准提取文本、图片、表格、公式</p>
+    </div>
+    <div class="card card-hover">
+      <div class="ficon bg-langextract-soft text-langextract">🧠</div>
+      <h4>智能实体提取</h4>
+      <p class="dim">LangExtract 基于 LLM 提取结构化实体</p>
+    </div>
+    <div class="card card-hover">
+      <div class="ficon bg-orange-soft text-orange">🖍️</div>
+      <h4>可视化高亮渲染</h4>
+      <p class="dim">WeasyPrint 将高亮标注渲染为 PDF</p>
+    </div>
+    <div class="card card-hover">
+      <div class="ficon bg-mineru-soft text-mineru">⚡</div>
+      <h4>异步任务处理</h4>
+      <p class="dim">WebSocket 实时推送处理进度</p>
+    </div>
+    <div class="card card-hover">
+      <div class="ficon bg-langextract-soft text-langextract">📝</div>
+      <h4>配置文件驱动</h4>
+      <p class="dim">YAML 配置灵活适配不同业务场景</p>
+    </div>
+    <div class="card card-hover">
+      <div class="ficon bg-orange-soft text-orange">💡</div>
+      <h4>配置智能助手</h4>
+      <p class="dim">agent-copilot 辅助生成与校验配置</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="5" data-total="32"></span></div>
+</section>
+
+<!-- ===== 6. 系统架构总览 ===== -->
+<section class="slide" data-title="系统架构">
+  <p class="kicker">Architecture</p>
+  <h2 class="h2">系统架构总览</h2>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:18px;">
+    <div class="card" style="padding:20px 26px;">
+      <div class="row" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;"><span class="stage-badge" style="background:#fff7ed;color:#9a3412;border-color:#fed7aa;">前端界面</span><span class="dim">Web UI / Vue 3</span></div>
+        <div style="font-size:18px;color:var(--text-3);">⟷</div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="stage-badge" style="background:#f1f5f9;color:#334155;border-color:#cbd5e1;">FastAPI</span><span class="dim">REST + WebSocket</span></div>
+        <div style="font-size:18px;color:var(--text-3);">⟷</div>
+        <div style="display:flex;align-items:center;gap:10px;"><span class="stage-badge" style="background:#f8fafc;color:#64748b;border-color:#e2e8f0;">任务管理器</span><span class="dim">TaskManager + Redis</span></div>
+      </div>
+    </div>
+    <div class="card" style="padding:24px 28px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1px dashed var(--border-strong);">
+      <h4 style="text-align:center;margin-bottom:18px;color:var(--text-3);font-size:14px;letter-spacing:.1em;text-transform:uppercase;">核心处理管道 Pipeline</h4>
+      <div class="pipeline-row" style="justify-content:center;">
+        <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+          <div style="font-size:28px;margin-bottom:6px;">📄</div>
+          <div style="font-weight:700;font-size:14px;">PDF/文档</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+          <div style="font-size:28px;margin-bottom:6px;">🔧</div>
+          <div style="font-weight:700;font-size:14px;">MinerU API</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+          <div style="font-size:28px;margin-bottom:6px;">📝</div>
+          <div style="font-weight:700;font-size:14px;">Markdown</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-item card card-langextract center tc" style="padding:18px;">
+          <div style="font-size:28px;margin-bottom:6px;">🧠</div>
+          <div style="font-weight:700;font-size:14px;">LangExtract</div>
+        </div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipeline-item card card-orange center tc" style="padding:18px;">
+          <div style="font-size:28px;margin-bottom:6px;">🖍️</div>
+          <div style="font-weight:700;font-size:14px;">高亮 PDF</div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="gap:16px;">
+      <div class="card" style="flex:1;padding:18px 22px;">
+        <h4 style="font-size:14px;color:var(--text-3);margin-bottom:8px;">存储层</h4>
+        <div class="row" style="gap:8px;">
+          <span class="pill">LocalProvider</span>
+          <span class="pill">MinioProvider</span>
+        </div>
+      </div>
+      <div class="card" style="flex:1;padding:18px 22px;">
+        <h4 style="font-size:14px;color:var(--text-3);margin-bottom:8px;">配置管理</h4>
+        <div class="row" style="gap:8px;">
+          <span class="pill">YAML Profiles</span>
+          <span class="pill">Few-shot</span>
+          <span class="pill">Color Map</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="6" data-total="32"></span></div>
+</section>
+
+<!-- ===== 7. 数据流转 ===== -->
+<section class="slide" data-title="数据流转">
+  <p class="kicker">Data Flow</p>
+  <h2 class="h2">数据流转流程</h2>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:14px;">
+    <div class="row" style="gap:12px;flex-wrap:wrap;">
+      <div class="card card-mineru" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#334155;font-weight:600;margin-bottom:4px;">输入</div>
+        <div style="font-weight:700;">PDF URL / 文件</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--text-3);">→</div>
+      <div class="card card-mineru" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#334155;font-weight:600;margin-bottom:4px;">解析</div>
+        <div style="font-weight:700;">MinerU API</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--text-3);">→</div>
+      <div class="card card-mineru" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#334155;font-weight:600;margin-bottom:4px;">中间产物</div>
+        <div style="font-weight:700;">full.md</div>
+      </div>
+    </div>
+    <div class="row" style="gap:12px;flex-wrap:wrap;">
+      <div class="card card-langextract" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:4px;">提取</div>
+        <div style="font-weight:700;">LangExtract</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--text-3);">→</div>
+      <div class="card card-langextract" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#64748b;font-weight:600;margin-bottom:4px;">标注</div>
+        <div style="font-weight:700;">HTML &lt;mark&gt;</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--text-3);">→</div>
+      <div class="card card-orange" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#9a3412;font-weight:600;margin-bottom:4px;">渲染</div>
+        <div style="font-weight:700;">WeasyPrint</div>
+      </div>
+      <div style="display:flex;align-items:center;color:var(--text-3);">→</div>
+      <div class="card card-orange" style="flex:1;min-width:140px;padding:16px;text-align:center;">
+        <div style="font-size:13px;color:#9a3412;font-weight:600;margin-bottom:4px;">输出</div>
+        <div style="font-weight:700;">高亮 PDF</div>
+      </div>
+    </div>
+    <div class="card" style="padding:18px 24px;background:var(--bg-soft);border-style:dashed;">
+      <div class="row" style="justify-content:space-around;flex-wrap:wrap;gap:12px;">
+        <div style="text-align:center;"><div style="font-size:20px;margin-bottom:4px;">📁</div><div style="font-size:12px;color:var(--text-3);">Workspace 临时工作区</div></div>
+        <div style="text-align:center;"><div style="font-size:20px;margin-bottom:4px;">☁️</div><div style="font-size:12px;color:var(--text-3);">Storage Provider 持久化</div></div>
+        <div style="text-align:center;"><div style="font-size:20px;margin-bottom:4px;">🧹</div><div style="font-size:12px;color:var(--text-3);">自动清理 Workspace</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="7" data-total="32"></span></div>
+</section>
+
+<!-- ===== 8. 存储架构 ===== -->
+<section class="slide" data-title="存储架构">
+  <p class="kicker">Storage</p>
+  <h2 class="h2">存储架构设计</h2>
+  <div class="grid g2 mt-l" style="align-items:start;">
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">💻</span> LocalProvider</h4>
+      <p class="dim">本地文件存储，适用于开发环境。产物保存在 <code>storage/</code> 目录，支持 Workspace 自动清理。</p>
+      <div class="mt-m"><span class="pill">本地开发</span><span class="pill">单实例部署</span></div>
+    </div>
+    <div class="card">
+      <h4 style="display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">☁️</span> MinioProvider</h4>
+      <p class="dim">MinIO 对象存储，适用于生产/多实例环境。产物自动归档到存储桶，支持高可用访问。</p>
+      <div class="mt-m"><span class="pill">生产环境</span><span class="pill">多实例</span></div>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:20px 26px;">
+    <h4 style="font-size:14px;color:var(--text-3);margin-bottom:12px;">Artifacts API 产物接口</h4>
+    <div class="stack" style="font-family:var(--font-mono);font-size:13px;color:var(--text-2);">
+      <div><span style="color:#f97316;">GET</span> /api/v1/tasks/{task_id}/artifacts/langextract_html</div>
+      <div><span style="color:#f97316;">GET</span> /api/v1/tasks/{task_id}/artifacts/entities <span class="dim" style="font-size:12px;">— JSONL 结构化数据</span></div>
+      <div><span style="color:#f97316;">GET</span> /api/v1/tasks/{task_id}/artifacts/highlight_pdf</div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="8" data-total="32"></span></div>
+</section>
+
+<!-- ===== 9. 前端界面 ===== -->
+<section class="slide" data-title="前端界面">
+  <p class="kicker">Frontend</p>
+  <h2 class="h2">前端界面</h2>
+  <p class="lede mt-m">采用<strong>品牌橙 + 墨水灰蓝</strong>的浅色文档工作台风格，营造专业、清晰的阅读与操作体验。</p>
+  <div class="grid g3 mt-l anim-stagger-list" data-anim-target>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">📤</div>
+      <h4>拖拽上传</h4>
+      <p class="dim">支持拖放 PDF 文件与 URL 输入</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">📊</div>
+      <h4>实时进度</h4>
+      <p class="dim">WebSocket 推送处理状态</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">🎨</div>
+      <h4>PDF 预览</h4>
+      <p class="dim">内置 PDF.js 预览高亮结果</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">📥</div>
+      <h4>结果下载</h4>
+      <p class="dim">一键下载高亮 PDF 与产物</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">📜</div>
+      <h4>任务历史</h4>
+      <p class="dim">分页、筛选、详情与删除</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">⚙️</div>
+      <h4>配置管理</h4>
+      <p class="dim">上传、切换、激活 Profile</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="9" data-total="32"></span></div>
+</section>
+
+<!-- ===== 10. MinerU 封面 ===== -->
+<section class="slide center tc slide-bg-soft slide-bg-grid" data-title="MinerU 封面">
+  <div style="position:absolute;top:0;left:0;width:8px;bottom:0;background:linear-gradient(180deg,#334155,#475569);"></div>
+  <div>
+    <p class="kicker" style="color:#334155;">Document Parser</p>
+    <h1 class="h1" style="font-size:90px;color:#334155;">MinerU</h1>
+    <p class="lede" style="margin:14px auto;max-width:52ch;">由 OpenDataLab 开发的多模态文档解析工具，登顶 GitHub Trending 的开源利器。</p>
+    <div class="row mt-l" style="justify-content:center;gap:12px;">
+      <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#cbd5e1;">布局检测</span>
+      <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#cbd5e1;">公式识别</span>
+      <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#cbd5e1;">OCR</span>
+      <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#cbd5e1;">表格解析</span>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="10" data-total="32"></span></div>
+</section>
+
+<!-- ===== 11. MinerU 是什么 ===== -->
+<section class="slide" data-title="MinerU 介绍">
+  <p class="kicker" style="color:#334155;">What is MinerU</p>
+  <h2 class="h2">MinerU 是什么？</h2>
+  <p class="lede mt-m">MinerU 是<strong>上海人工智能实验室（OpenDataLab）</strong>开源的智能数据提取工具，专注于将复杂多模态 PDF 文档精准转化为清晰、易于分析的 Markdown / JSON 格式。</p>
+  <div class="grid g2 mt-l">
+    <div class="card bg-mineru-soft" style="border-color:#cbd5e1;">
+      <h4>🏆 开源成绩</h4>
+      <p class="dim">GitHub Star 累计飙升 3000+，登顶 GitHub Python Trending，获国内外多个技术大V点赞。</p>
+    </div>
+    <div class="card bg-mineru-soft" style="border-color:#cbd5e1;">
+      <h4>🔬 研发背景</h4>
+      <p class="dim">基于 InternVL 多模态大模型技术栈构建，在 WAIC 2024 科学前沿主论坛正式发布。</p>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:18px 24px;">
+    <h4 style="font-size:14px;color:var(--text-3);margin-bottom:10px;">核心定位</h4>
+    <p style="color:var(--text-2);">将混合了<strong>图片、公式、表格、脚注</strong>等在内的复杂多模态 PDF 文档转化为 LLM-ready 的 Markdown / JSON，为 RAG、知识引擎等下游应用提供高质量语料。</p>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="11" data-total="32"></span></div>
+</section>
+
+<!-- ===== 12. MinerU 核心功能 ===== -->
+<section class="slide" data-title="MinerU 功能">
+  <p class="kicker" style="color:#334155;">Key Features</p>
+  <h2 class="h2">MinerU 核心功能</h2>
+  <div class="grid g2 mt-l">
+    <div class="card card-mineru">
+      <h4>📄 多类型 PDF 支持</h4>
+      <p class="dim">支持文本型 PDF、图层型 PDF、扫描版 PDF，自动识别文档类型并选择最佳解析策略。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>📐 复杂元素解析</h4>
+      <p class="dim">精准识别标题、正文、图片、表格、脚注、边注、页眉页脚，自动去除无用元素。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>∑ 公式识别与转换</h4>
+      <p class="dim">检测行内公式与行间公式区域，使用 UniMERNet 转换为 LaTeX 格式。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>🌐 跨平台部署</h4>
+      <p class="dim">支持 Windows、macOS、Linux，可选择纯 CPU 或 CUDA / MPS GPU 加速。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="12" data-total="32"></span></div>
+</section>
+
+<!-- ===== 13. MinerU 技术原理 ===== -->
+<section class="slide" data-title="MinerU 原理">
+  <p class="kicker" style="color:#334155;">How It Works</p>
+  <h2 class="h2">MinerU 技术原理</h2>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:16px;">
+    <div class="row" style="gap:14px;align-items:stretch;">
+      <div class="card" style="flex:1;display:flex;flex-direction:column;gap:8px;">
+        <div class="step-circle bg-mineru-soft text-mineru">1</div>
+        <h4>文档分类预处理</h4>
+        <p class="dim" style="font-size:14px;">提取 PDF 元数据，检测乱码与扫描版，进行 PDF 类型识别。</p>
+      </div>
+      <div class="card" style="flex:1;display:flex;flex-direction:column;gap:8px;">
+        <div class="step-circle bg-mineru-soft text-mineru">2</div>
+        <h4>布局检测与公式定位</h4>
+        <p class="dim" style="font-size:14px;">LayoutLMv3 微调模型检测区域，YOLOv8 自研模型定位公式。</p>
+      </div>
+      <div class="card" style="flex:1;display:flex;flex-direction:column;gap:8px;">
+        <div class="step-circle bg-mineru-soft text-mineru">3</div>
+        <h4>OCR 与内容提取</h4>
+        <p class="dim" style="font-size:14px;">结合高质量 OCR 与公式识别，提取准确文本与公式内容。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:20px 26px;background:linear-gradient(135deg,#f1f5f9,#ffffff);">
+      <h4 style="font-size:14px;color:#334155;margin-bottom:12px;">管线后处理 Pipeline</h4>
+      <div class="row" style="gap:10px;flex-wrap:wrap;">
+        <span class="pill" style="background:#f1f5f9;color:#334155;">坐标修复</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">高 IoU 处理</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">图片描述合并</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">公式替换</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">Layout 排序</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">无用元素移除</span>
+        <span class="pill" style="background:#f1f5f9;color:#334155;">复杂布局过滤</span>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="13" data-total="32"></span></div>
+</section>
+
+<!-- ===== 14. MinerU 支持的文档类型 ===== -->
+<section class="slide" data-title="MinerU 文档类型">
+  <p class="kicker" style="color:#334155;">Document Types</p>
+  <h2 class="h2">MinerU 支持的文档类型</h2>
+  <div class="grid g3 mt-l anim-stagger-list" data-anim-target>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">📄</div>
+      <h4>文本型 PDF</h4>
+      <p class="dim">文字可直接复制，结构清晰</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">🔒</div>
+      <h4>图层型 PDF</h4>
+      <p class="dim">文字不可复制，解析易乱码</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">📷</div>
+      <h4>扫描版 PDF</h4>
+      <p class="dim">纯图片，需 OCR 识别</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">📰</div>
+      <h4>学术论文</h4>
+      <p class="dim">多栏排版、公式密集</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">📊</div>
+      <h4>财务报告</h4>
+      <p class="dim">表格多、数据密集</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">⚖️</div>
+      <h4>法律文件</h4>
+      <p class="dim">格式规范、条款结构化</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="14" data-total="32"></span></div>
+</section>
+
+<!-- ===== 15. MinerU 模型工具链 ===== -->
+<section class="slide" data-title="MinerU 工具链">
+  <p class="kicker" style="color:#334155;">PDF-Extract-Kit</p>
+  <h2 class="h2">MinerU 模型解析工具链</h2>
+  <p class="lede mt-m">PDF-Extract-Kit 是 MinerU 的核心模型链，由四个关键模块组成，在多个维度性能远超其他开源模型。</p>
+  <div class="grid g2 mt-l">
+    <div class="card">
+      <div class="row" style="gap:12px;">
+        <div class="step-circle bg-mineru-soft text-mineru">1</div>
+        <div>
+          <h4>布局检测 LayoutLMv3-SFT</h4>
+          <p class="dim">在 LayoutLMv3-base-chinese 预训练权重基础上做 SFT 微调，检测图像、表格、标题、文本等区域。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="gap:12px;">
+        <div class="step-circle bg-mineru-soft text-mineru">2</div>
+        <div>
+          <h4>公式检测 YOLOv8-Trained</h4>
+          <p class="dim">基于 YOLOv8l 训练的自研公式检测模型，支持行内公式与行间公式检测。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="gap:12px;">
+        <div class="step-circle bg-mineru-soft text-mineru">3</div>
+        <div>
+          <h4>公式识别 UniMERNet</h4>
+          <p class="dim">直接使用 UniMERNet 权重，无需额外 SFT，精度在 GitHub 页面有详细验证结果。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row" style="gap:12px;">
+        <div class="step-circle bg-mineru-soft text-mineru">4</div>
+        <div>
+          <h4>OCR 识别引擎</h4>
+          <p class="dim">高质量 OCR 技术提取准确文本内容，对扫描模糊、水印等情况有较高鲁棒性。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="15" data-total="32"></span></div>
+</section>
+
+<!-- ===== 16. MinerU 输出格式 ===== -->
+<section class="slide" data-title="MinerU 输出">
+  <p class="kicker" style="color:#334155;">Output Formats</p>
+  <h2 class="h2">MinerU 输出格式</h2>
+  <p class="lede mt-m">MinerU 将解析结果统一为中间态 middle-json，开发者可按需输出不同格式。</p>
+  <div class="grid g2 mt-l">
+    <div class="card card-mineru">
+      <h4>📝 Markdown</h4>
+      <p class="dim">最常用输出格式，保留标题层级、列表、表格，适合 LLM 训练与 RAG 应用。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>📋 Content List</h4>
+      <p class="dim">作者团队开发的列表样序列结构，比 Markdown 保留更多信息，适合多模态 / NLP 训练。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>🔲 Layout / Span</h4>
+      <p class="dim">保留精确的坐标与区域信息，适合需要版面分析结果的场景。</p>
+    </div>
+    <div class="card card-mineru">
+      <h4>📦 middle-json</h4>
+      <p class="dim">统一的中间态，包含 PDF 解析的所有信息，可自定义转换逻辑。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="16" data-total="32"></span></div>
+</section>
+
+<!-- ===== 17. MinerU 性能对比 ===== -->
+<section class="slide" data-title="MinerU 性能">
+  <p class="kicker" style="color:#334155;">Performance</p>
+  <h2 class="h2">MinerU 性能表现</h2>
+  <p class="lede mt-m">在布局检测、公式检测、公式识别多个维度上，MinerU 的性能<strong>远超其他开源模型</strong>，媲美甚至超过商业软件。</p>
+  <div class="grid g3 mt-l">
+    <div class="card center tc">
+      <div style="font-size:56px;font-weight:800;color:#334155;line-height:1;">SOTA</div>
+      <h4 style="margin-top:10px;">布局检测</h4>
+      <p class="dim">优于 DocXchain、Surya、360LayoutAnalysis</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:56px;font-weight:800;color:#334155;line-height:1;">SOTA</div>
+      <h4 style="margin-top:10px;">公式检测</h4>
+      <p class="dim">优于 Pix2Text-MFD 等开源方案</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:56px;font-weight:800;color:#334155;line-height:1;">Top</div>
+      <h4 style="margin-top:10px;">公式识别</h4>
+      <p class="dim">UniMERNet 业界领先精度</p>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:16px 22px;background:#f1f5f9;border-color:#cbd5e1;">
+    <p style="color:#334155;font-size:14px;">📌 评测数据集：论文验证集（402页）、教材验证集（587页）、多源验证集（789页，含教材、书籍等）</p>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="17" data-total="32"></span></div>
+</section>
+
+<!-- ===== 18. LangExtract 封面 ===== -->
+<section class="slide center tc slide-bg-soft slide-bg-grid" data-title="LangExtract 封面">
+  <div style="position:absolute;top:0;left:0;width:8px;bottom:0;background:linear-gradient(180deg,#64748b,#475569);"></div>
+  <div>
+    <p class="kicker" style="color:#64748b;">Information Extraction</p>
+    <h1 class="h1" style="font-size:82px;color:#64748b;">LangExtract</h1>
+    <p class="lede" style="margin:14px auto;max-width:52ch;">Google 官方推荐的轻量级 LLM 信息提取库，基于 Few-shot 提示驱动的结构化数据抽取引擎。</p>
+    <div class="row mt-l" style="justify-content:center;gap:12px;">
+      <span class="pill" style="background:#f8fafc;color:#64748b;border-color:#e2e8f0;">Schema 驱动</span>
+      <span class="pill" style="background:#f8fafc;color:#64748b;border-color:#e2e8f0;">Few-shot 学习</span>
+      <span class="pill" style="background:#f8fafc;color:#64748b;border-color:#e2e8f0;">可视化高亮</span>
+      <span class="pill" style="background:#f8fafc;color:#64748b;border-color:#e2e8f0;">并行处理</span>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="18" data-total="32"></span></div>
+</section>
+
+<!-- ===== 19. LangExtract 是什么 ===== -->
+<section class="slide" data-title="LangExtract 介绍">
+  <p class="kicker" style="color:#64748b;">What is LangExtract</p>
+  <h2 class="h2">LangExtract 是什么？</h2>
+  <p class="lede mt-m">LangExtract 是 Google 官方推出的轻量级信息提取库，为各种 LLM（如 Google Gemini）提供统一的文本结构化抽取接口，<strong>无需微调</strong>即可实现高精度实体提取。</p>
+  <div class="grid g2 mt-l">
+    <div class="card bg-langextract-soft" style="border-color:#e2e8f0;">
+      <h4>🔬 起源</h4>
+      <p class="dim">最初应用于医学信息提取场景，被证明在临床文本处理中效果显著，后扩展为通用文本提取库。</p>
+    </div>
+    <div class="card bg-langextract-soft" style="border-color:#e2e8f0;">
+      <h4>🚀 官方认可</h4>
+      <p class="dim">Google Developers Blog 官方推荐，作为 Gemini-powered 信息提取方案进行推广。</p>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:18px 24px;">
+    <h4 style="font-size:14px;color:var(--text-3);margin-bottom:10px;">核心理念</h4>
+    <p style="color:var(--text-2);">围绕 <strong>"Schema 驱动抽取"</strong> 思想构建，通过 Prompt 和 Few-shot 示例驱动 LLM 进行精准、可扩展且可验证的信息抽取。</p>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="19" data-total="32"></span></div>
+</section>
+
+<!-- ===== 20. LangExtract 核心特性 ===== -->
+<section class="slide" data-title="LangExtract 特性">
+  <p class="kicker" style="color:#64748b;">Key Features</p>
+  <h2 class="h2">LangExtract 核心特性</h2>
+  <div class="grid g2 mt-l">
+    <div class="card card-langextract">
+      <h4>🧩 Schema 驱动抽取</h4>
+      <p class="dim">通过清晰的提取模式定义要抽取的实体类别，LLM 按 Schema 输出结构化结果。</p>
+    </div>
+    <div class="card card-langextract">
+      <h4>🎓 Few-shot 学习</h4>
+      <p class="dim">提供示例数据（ExampleData）展示期望的输出格式，无需微调模型即可获得高精度。</p>
+    </div>
+    <div class="card card-langextract">
+      <h4>📍 精确来源映射</h4>
+      <p class="dim">每个提取的实体都映射到原文的精确字符位置，支持在源文本中高亮显示。</p>
+    </div>
+    <div class="card card-langextract">
+      <h4>⚡ 并行与优化</h4>
+      <p class="dim">支持多 Worker 并行处理、分块优化、多轮提取（extraction_passes）提高召回率。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="20" data-total="32"></span></div>
+</section>
+
+<!-- ===== 21. LangExtract Schema 驱动 ===== -->
+<section class="slide" data-title="Schema 驱动">
+  <p class="kicker" style="color:#64748b;">Schema-Driven</p>
+  <h2 class="h2">Schema 驱动抽取</h2>
+  <div class="grid g2 mt-l" style="align-items:start;">
+    <div>
+      <p class="lede" style="font-size:18px;">LangExtract 使用 <strong>ExampleData</strong> 和 <strong>Extraction</strong> 类定义提取模式，LLM 按照定义的结构化格式输出结果。</p>
+      <div class="mt-m">
+        <div class="card" style="padding:14px 18px;margin-bottom:10px;">
+          <div style="font-weight:600;color:#64748b;margin-bottom:4px;">Step 1</div>
+          <p class="dim" style="font-size:14px;">定义提取类别（如 company_name、numeric_value、date）</p>
+        </div>
+        <div class="card" style="padding:14px 18px;margin-bottom:10px;">
+          <div style="font-weight:600;color:#64748b;margin-bottom:4px;">Step 2</div>
+          <p class="dim" style="font-size:14px;">提供 Few-shot 示例展示输入文本与期望提取结果</p>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <div style="font-weight:600;color:#64748b;margin-bottom:4px;">Step 3</div>
+          <p class="dim" style="font-size:14px;">调用 LLM 抽取，输出 AnnotatedDocument 结构化结果</p>
+        </div>
+      </div>
+    </div>
+    <div class="fm-terminal">
+      <div class="tbar"><div class="tdot r"></div><div class="tdot y"></div><div class="tdot g"></div></div>
+<pre><span class="tcmt"># 定义提取示例</span>
+example = data.ExampleData(
+    text=<span class="tstr">"苹果出货量 240.6 百万部"</span>,
+    extractions=[
+        data.Extraction(
+            <span class="tkw">class</span>=<span class="tstr">"company_name"</span>,
+            text=<span class="tstr">"苹果"</span>
+        ),
+        data.Extraction(
+            <span class="tkw">class</span>=<span class="tstr">"numeric_value"</span>,
+            text=<span class="tstr">"240.6"</span>
+        ),
+    ]
+)</pre>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="21" data-total="32"></span></div>
+</section>
+
+<!-- ===== 22. LangExtract Few-Shot ===== -->
+<section class="slide" data-title="Few-Shot 学习">
+  <p class="kicker" style="color:#64748b;">Few-Shot Learning</p>
+  <h2 class="h2">Few-Shot 示例学习</h2>
+  <p class="lede mt-m">LangExtract 的核心是基于示例的学习。你只需提供几个高质量的示例，LLM 就能理解提取模式并泛化到新文本。</p>
+  <div class="grid g3 mt-l">
+    <div class="card">
+      <h4>💊 医学提取</h4>
+      <p class="dim" style="font-size:14px;">提取药物名称、剂量、给药途径、频率等医疗实体。</p>
+      <div class="mt-s" style="font-size:12px;color:#64748b;">medication · dosage · route · frequency</div>
+    </div>
+    <div class="card">
+      <h4>📈 金融提取</h4>
+      <p class="dim" style="font-size:14px;">提取公司名称、数值数据、日期、增长率等财经实体。</p>
+      <div class="mt-s" style="font-size:12px;color:#64748b;">company_name · numeric_value · date · growth</div>
+    </div>
+    <div class="card">
+      <h4>📚 文学分析</h4>
+      <p class="dim" style="font-size:14px;">提取人物、情感、情节元素、主题等文学实体。</p>
+      <div class="mt-s" style="font-size:12px;color:#64748b;">character · emotion · plot · theme</div>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:16px 22px;background:#f8fafc;border-color:#e2e8f0;">
+    <p style="color:#64748b;font-size:14px;">💡 对于支持结构化输出的提供商（如 Google Gemini），LangExtract 还提供 GeminiSchema 进行字段级 JSON Schema 验证。</p>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="22" data-total="32"></span></div>
+</section>
+
+<!-- ===== 23. LangExtract 可视化 ===== -->
+<section class="slide" data-title="可视化高亮">
+  <p class="kicker" style="color:#64748b;">Visualization</p>
+  <h2 class="h2">可视化与来源映射</h2>
+  <div class="grid g2 mt-l" style="align-items:start;">
+    <div>
+      <p class="lede" style="font-size:18px;">每个提取的实体都与原文的<strong>精确字符位置</strong>关联，支持生成高亮 HTML 可视化，方便人工复核。</p>
+      <div class="stack mt-m">
+        <div class="card" style="padding:14px 18px;">
+          <h4 style="font-size:15px;">🎯 精确位置映射</h4>
+          <p class="dim" style="font-size:14px;">每个 Extraction 包含字符级起始/结束位置，可追溯至原文。</p>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <h4 style="font-size:15px;">🖍️ 高亮 HTML 生成</h4>
+          <p class="dim" style="font-size:14px;">自动生成带 &lt;mark&gt; 标签的 HTML，按类别着色展示。</p>
+        </div>
+        <div class="card" style="padding:14px 18px;">
+          <h4 style="font-size:15px;">📊 交互式查看</h4>
+          <p class="dim" style="font-size:14px;">HTML 可视化支持在浏览器中交互式查看提取结果。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:20px;background:#fff;border:1px solid var(--border);font-size:14px;line-height:1.8;">
+      <div style="font-weight:600;color:var(--text-3);margin-bottom:10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;">可视化预览</div>
+      <p style="color:var(--text-1);">
+        <mark style="background:#ffedd5;color:#9a3412;padding:2px 6px;border-radius:4px;font-weight:500;">苹果</mark>
+        公司发布财报显示，第三季度出货量达到
+        <mark style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;font-weight:500;">240.6</mark>
+        百万部，同比增长
+        <mark style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-weight:500;">12.5%</mark>
+        。分析师认为，这一增长主要得益于
+        <mark style="background:#f8fafc;color:#64748b;padding:2px 6px;border-radius:4px;font-weight:500;">iPhone 15</mark>
+        系列的强劲表现。
+      </p>
+      <div class="mt-m" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11px;padding:3px 8px;background:#ffedd5;color:#9a3412;border-radius:4px;">■ company_name</span>
+        <span style="font-size:11px;padding:3px 8px;background:#dbeafe;color:#1e40af;border-radius:4px;">■ numeric_value</span>
+        <span style="font-size:11px;padding:3px 8px;background:#dcfce7;color:#166534;border-radius:4px;">■ growth</span>
+        <span style="font-size:11px;padding:3px 8px;background:#f8fafc;color:#64748b;border-radius:4px;">■ product</span>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="23" data-total="32"></span></div>
+</section>
+
+<!-- ===== 24. LangExtract 并行处理 ===== -->
+<section class="slide" data-title="并行处理">
+  <p class="kicker" style="color:#64748b;">Parallel Processing</p>
+  <h2 class="h2">LangExtract 并行处理</h2>
+  <p class="lede mt-m">处理整本书或长文档时，LangExtract 通过并行化和分块策略显著提升速度与准确性。</p>
+  <div class="grid g3 mt-l">
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">🔁</div>
+      <h4>多轮提取</h4>
+      <p class="dim">extraction_passes 参数控制遍历次数，提高召回率</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">🧩</div>
+      <h4>智能分块</h4>
+      <p class="dim">max_char_buffer 控制分块大小，优化长文本处理精度</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:42px;margin-bottom:10px;">⚡</div>
+      <h4>多 Worker 并行</h4>
+      <p class="dim">max_workers 启用并行处理，大幅缩短整体耗时</p>
+    </div>
+  </div>
+  <div class="fm-terminal mt-l">
+    <div class="tbar"><div class="tdot r"></div><div class="tdot y"></div><div class="tdot g"></div></div>
+<pre><span class="tcmt"># 处理整本书（古腾堡计划《罗密欧与朱丽叶》）</span>
+result = lx.extract(
+    text_or_documents=<span class="tstr">"https://www.gutenberg.org/files/1513/1513-0.txt"</span>,
+    prompt_description=prompt,
+    examples=examples,
+    model_id=<span class="tstr">"gemini-2.5-flash"</span>,
+    extraction_passes=<span class="tkw">3</span>,
+    max_workers=<span class="tkw">20</span>,
+    max_char_buffer=<span class="tkw">1000</span>
+)</pre>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="24" data-total="32"></span></div>
+</section>
+
+<!-- ===== 25. 融合管道 ===== -->
+<section class="slide" data-title="融合管道">
+  <p class="kicker">Fusion Pipeline</p>
+  <h2 class="h2">MinerU + LangExtract 融合管道</h2>
+  <p class="lede mt-m">FusionMark 的核心价值在于将 MinerU 的<strong>文档解析能力</strong>与 LangExtract 的<strong>信息提取能力</strong>无缝整合，形成端到端的智能处理管道。</p>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:14px;">
+    <div class="pipeline-row" style="justify-content:center;">
+      <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">📄</div>
+        <div style="font-weight:700;font-size:14px;">输入文档</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">🔧</div>
+        <div style="font-weight:700;font-size:14px;">MinerU 解析</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipeline-item card card-mineru center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">📝</div>
+        <div style="font-weight:700;font-size:14px;">Markdown</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipeline-item card card-langextract center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">🧠</div>
+        <div style="font-weight:700;font-size:14px;">LangExtract 提取</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipeline-item card card-orange center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">🖍️</div>
+        <div style="font-weight:700;font-size:14px;">HTML 高亮</div>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipeline-item card card-orange center tc" style="padding:18px;">
+        <div style="font-size:28px;margin-bottom:6px;">📑</div>
+        <div style="font-weight:700;font-size:14px;">PDF 输出</div>
+      </div>
+    </div>
+    <div class="card" style="padding:16px 22px;background:var(--bg-soft);">
+      <p style="color:var(--text-2);font-size:14px;"><strong>关键整合点：</strong>MinerU 输出的 Markdown 是 LangExtract 的理想输入 —— 保留了文档的结构化信息，同时去除了版面干扰元素，使 LLM 能专注于内容提取。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="25" data-total="32"></span></div>
+</section>
+
+<!-- ===== 26. 渲染流程 ===== -->
+<section class="slide" data-title="渲染流程">
+  <p class="kicker">Rendering</p>
+  <h2 class="h2">Markdown → 高亮 PDF 渲染流程</h2>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:16px;">
+    <div class="card" style="padding:20px 26px;display:flex;gap:16px;align-items:flex-start;">
+      <div class="step-circle bg-mineru-soft text-mineru">1</div>
+      <div>
+        <h4>LangExtract 实体提取</h4>
+        <p class="dim">使用配置中的 extraction_prompt 和 few-shot 示例，调用 LLM 提取结构化实体，输出 List[Extraction(class, text)]。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:20px 26px;display:flex;gap:16px;align-items:flex-start;">
+      <div class="step-circle bg-langextract-soft text-langextract">2</div>
+      <div>
+        <h4>HTML 高亮标记</h4>
+        <p class="dim">Markdown → HTML（使用 markdown 库），在文本节点中查找实体，添加 &lt;mark class="highlight-{category}"&gt; 标签，处理重叠匹配（优先保留长匹配）。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:20px 26px;display:flex;gap:16px;align-items:flex-start;">
+      <div class="step-circle bg-orange-soft text-orange">3</div>
+      <div>
+        <h4>WeasyPrint 渲染</h4>
+        <p class="dim">HTML + CSS → PDF，使用 @page 规则设置页眉页脚，支持中文（Microsoft YaHei / SimSun），输出最终高亮 PDF。</p>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="26" data-total="32"></span></div>
+</section>
+
+<!-- ===== 27. 配置文件驱动 ===== -->
+<section class="slide" data-title="配置系统">
+  <p class="kicker">Configuration</p>
+  <h2 class="h2">配置文件驱动设计</h2>
+  <p class="lede mt-m">FusionMark 采用 <strong>YAML 配置文件（Profile）</strong>驱动整个处理流程，灵活适配不同业务场景，无需修改代码即可切换提取策略。</p>
+  <div class="grid g2 mt-l" style="align-items:start;">
+    <div class="stack">
+      <div class="card" style="padding:14px 18px;">
+        <h4 style="font-size:15px;">⚙️ MinerU 配置</h4>
+        <p class="dim" style="font-size:14px;">模型选择（pipeline / vlm / MinerU-HTML）、OCR、公式、表格开关、语言设置。</p>
+      </div>
+      <div class="card" style="padding:14px 18px;">
+        <h4 style="font-size:15px;">🎨 高亮渲染配置</h4>
+        <p class="dim" style="font-size:14px;">extraction_prompt、category_colors、few-shot examples、模型参数。</p>
+      </div>
+      <div class="card" style="padding:14px 18px;">
+        <h4 style="font-size:15px;">📦 输出配置</h4>
+        <p class="dim" style="font-size:14px;">final_output_dir、产物持久化开关、Workspace 清理策略。</p>
+      </div>
+    </div>
+    <div class="fm-terminal" style="font-size:12px;">
+      <div class="tbar"><div class="tdot r"></div><div class="tdot y"></div><div class="tdot g"></div></div>
+<pre><span class="tcmt"># profile.yaml 示例</span>
+mineru_model: <span class="tstr">"vlm"</span>
+mineru_enable_ocr: <span class="tkw">true</span>
+
+highlight_config:
+  extraction_prompt: |
+    提取公司名称、数值数据...
+  category_colors:
+    - <span class="tkw">name</span>: <span class="tstr">"company_name"</span>
+      <span class="tkw">color</span>: <span class="tstr">"#2ecc71"</span>
+  examples:
+    - <span class="tkw">text</span>: <span class="tstr">"苹果出货量 240.6 百万部"</span>
+      extractions: [...]</pre>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="27" data-total="32"></span></div>
+</section>
+
+<!-- ===== 28. 配置智能助手 ===== -->
+<section class="slide" data-title="Copilot">
+  <p class="kicker">Agent Copilot</p>
+  <h2 class="h2">配置智能助手 agent-copilot</h2>
+  <p class="lede mt-m">独立的智能助手应用，通过多轮对话帮助用户<strong>生成、修改、校验和确认</strong> Profile 配置草稿。</p>
+  <div class="grid g3 mt-l">
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">💬</div>
+      <h4>多轮对话</h4>
+      <p class="dim">自然语言交互生成配置</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">✅</div>
+      <h4>自动校验</h4>
+      <p class="dim">实时检查配置格式与逻辑</p>
+    </div>
+    <div class="card center tc">
+      <div style="font-size:40px;margin-bottom:10px;">📂</div>
+      <h4>持久化归档</h4>
+      <p class="dim">Redis + MinIO 会话管理</p>
+    </div>
+  </div>
+  <div class="card mt-l" style="padding:16px 22px;">
+    <h4 style="font-size:14px;color:var(--text-3);margin-bottom:10px;">架构组件</h4>
+    <div class="row" style="gap:10px;flex-wrap:wrap;">
+      <span class="pill">Intent Gatekeeper</span>
+      <span class="pill">Context Retriever</span>
+      <span class="pill">Draft Generator</span>
+      <span class="pill">Config Validator</span>
+      <span class="pill">Conversation Orchestrator</span>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="28" data-total="32"></span></div>
+</section>
+
+<!-- ===== 29. 应用场景 ===== -->
+<section class="slide" data-title="应用场景">
+  <p class="kicker">Use Cases</p>
+  <h2 class="h2">应用场景</h2>
+  <div class="grid g3 mt-l">
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">📊</div>
+      <h4>金融研报分析</h4>
+      <p class="dim">自动提取公司名称、财务数据、增长率、风险因素，生成带高亮的分析报告。</p>
+    </div>
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">⚖️</div>
+      <h4>法律合同审查</h4>
+      <p class="dim">提取关键条款、日期、金额、当事人信息，快速定位合同核心内容。</p>
+    </div>
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">🔬</div>
+      <h4>学术文献综述</h4>
+      <p class="dim">提取研究方法、实验数据、结论观点，辅助科研人员快速梳理文献。</p>
+    </div>
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">🏥</div>
+      <h4>医疗报告处理</h4>
+      <p class="dim">提取诊断结果、药物信息、检验指标，支持临床决策与病历管理。</p>
+    </div>
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">🏭</div>
+      <h4>供应链单据处理</h4>
+      <p class="dim">提取订单号、物料信息、数量金额，实现单据自动化录入与核对。</p>
+    </div>
+    <div class="card card-hover">
+      <div style="font-size:40px;margin-bottom:10px;">📚</div>
+      <h4>知识库构建</h4>
+      <p class="dim">为 RAG 系统提供高质量的解析 + 提取 + 标注数据，提升检索效果。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="29" data-total="32"></span></div>
+</section>
+
+<!-- ===== 30. 项目优势总结 ===== -->
+<section class="slide" data-title="优势总结">
+  <p class="kicker">Advantages</p>
+  <h2 class="h2">项目优势总结</h2>
+  <div class="grid g2 mt-l">
+    <div class="card" style="border-left:4px solid #334155;">
+      <h4>🎯 端到端闭环</h4>
+      <p class="dim">从文档上传到高亮 PDF 输出，全流程自动化，无需人工干预。</p>
+    </div>
+    <div class="card" style="border-left:4px solid #64748b;">
+      <h4>🔌 插件化架构</h4>
+      <p class="dim">Storage Provider、配置系统均支持插件扩展，易于集成与定制。</p>
+    </div>
+    <div class="card" style="border-left:4px solid #f97316;">
+      <h4>⚡ 高性能异步</h4>
+      <p class="dim">WebSocket 实时进度、Redis 状态缓存、Workspace 自动清理。</p>
+    </div>
+    <div class="card" style="border-left:4px solid #16a34a;">
+      <h4>🎨 品牌级视觉</h4>
+      <p class="dim">前端采用品牌橙 + 墨水灰蓝的专业配色，提供极致用户体验。</p>
+    </div>
+    <div class="card" style="border-left:4px solid #334155;">
+      <h4>🧠 智能配置辅助</h4>
+      <p class="dim">agent-copilot 降低配置门槛，非技术用户也能快速上手。</p>
+    </div>
+    <div class="card" style="border-left:4px solid #64748b;">
+      <h4>📦 产物完整可追溯</h4>
+      <p class="dim">MinerU 原始输出、LangExtract 结构化数据、高亮 PDF 全部归档。</p>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="30" data-total="32"></span></div>
+</section>
+
+<!-- ===== 31. 未来规划 ===== -->
+<section class="slide" data-title="未来规划">
+  <p class="kicker">Roadmap</p>
+  <h2 class="h2">未来规划</h2>
+  <div class="mt-l" style="display:flex;flex-direction:column;gap:14px;">
+    <div class="card" style="padding:18px 24px;display:flex;gap:16px;align-items:center;">
+      <div class="step-circle bg-mineru-soft text-mineru">Q3</div>
+      <div>
+        <h4 style="margin-bottom:4px;">Conversation Orchestrator 状态机</h4>
+        <p class="dim" style="font-size:14px;">完善 agent-copilot 的对话智能架构，实现意图识别、上下文检索、草稿生成、配置校验的完整闭环。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:18px 24px;display:flex;gap:16px;align-items:center;">
+      <div class="step-circle bg-langextract-soft text-langextract">Q4</div>
+      <div>
+        <h4 style="margin-bottom:4px;">更多文档格式支持</h4>
+        <p class="dim" style="font-size:14px;">扩展对 Excel、PPT、扫描件等更多格式的原生支持，提升 MinerU 集成深度。</p>
+      </div>
+    </div>
+    <div class="card" style="padding:18px 24px;display:flex;gap:16px;align-items:center;">
+      <div class="step-circle bg-orange-soft text-orange">2027</div>
+      <div>
+        <h4 style="margin-bottom:4px;">企业级功能增强</h4>
+        <p class="dim" style="font-size:14px;">权限管理、审计日志、批量任务调度、多租户隔离等企业级特性。</p>
+      </div>
+    </div>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark</span><span class="slide-number" data-current="31" data-total="32"></span></div>
+</section>
+
+<!-- ===== 32. 感谢页 ===== -->
+<section class="slide center tc slide-bg-soft slide-bg-grid" data-title="Thanks">
+  <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#334155,#64748b,#f97316);"></div>
+  <div>
+    <h1 class="h1" style="font-size:100px;"><span class="grad-text">Thanks</span></h1>
+    <p class="lede" style="margin:18px auto;max-width:50ch;">FusionMark — PDF 智能解析与高亮系统</p>
+    <div class="row mt-l" style="justify-content:center;gap:14px;">
+      <span class="stage-badge mineru">MinerU</span>
+      <span class="stage-badge langextract">LangExtract</span>
+      <span class="stage-badge highlight">WeasyPrint</span>
+    </div>
+    <p class="dim2 mt-l" style="font-size:16px;">📧 houxinyue18@outlook.com</p>
+    <p class="dim2" style="font-size:14px;margin-top:8px;">Powered by MinerU + LangExtract · MIT License</p>
+  </div>
+  <div class="deck-footer"><span class="dim2">FusionMark Team · 2026</span><span class="slide-number" data-current="32" data-total="32"></span></div>
+</section>
+
+</div>
+<script>
+/* Fallback navigation if external runtime.js fails to load */
+(function(){
+  const deck = document.querySelector('.deck');
+  if (!deck) return;
+  const slides = Array.from(deck.querySelectorAll('.slide'));
+  if (!slides.length) return;
+  let idx = 0;
+  const total = slides.length;
+  function go(n) {
+    n = Math.max(0, Math.min(total-1, n));
+    slides.forEach((s,i)=>{
+      s.classList.toggle('is-active', i===n);
+      s.classList.toggle('is-prev', i<n);
     });
-  </script>
+    idx = n;
+    const numEl = document.querySelector('.slide-number');
+    if (numEl) { numEl.setAttribute('data-current', n+1); numEl.setAttribute('data-total', total); }
+  }
+  document.addEventListener('keydown', function(e){
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch(e.key) {
+      case 'ArrowRight': case ' ': case 'PageDown': go(idx+1); e.preventDefault(); break;
+      case 'ArrowLeft': case 'PageUp': go(idx-1); e.preventDefault(); break;
+      case 'Home': go(0); break;
+      case 'End': go(total-1); break;
+    }
+  });
+  // Touch swipe support
+  let tx = 0;
+  document.addEventListener('touchstart', e=>{ tx=e.changedTouches[0].screenX; });
+  document.addEventListener('touchend', e=>{
+    const dx = e.changedTouches[0].screenX - tx;
+    if (dx < -40) go(idx+1);
+    if (dx > 40) go(idx-1);
+  });
+})();
+</script>
+<script src="../../.agents/skills/html-ppt-skill-main/assets/runtime.js"></script>
 </body>
 </html>
+
